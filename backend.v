@@ -26,7 +26,7 @@ module markov(clock, reset, combination, choice);
 	input [3:0] combination;
 	reg [3:0] previous;
 	wire [1:0] random_choice;
-	real matrix [8:0][1:0][2:0];
+	reg [8:0] matrix [0:2];
 	output reg [1:0] choice;
 	reg ready = 1'b0;
 	reg [4:0] count = 5'b0;
