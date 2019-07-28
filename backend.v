@@ -50,13 +50,14 @@ module markov(clock, reset, combination, choice);
 	always @(posedge clock) begin
 		if (reset == 1'b0) begin
 			ready <= 1'b0;
+			count <= 1'b0;
 		end
 		
 		if (!ready) begin
 			
 			if (count == 9) begin
 				ready <= 1'b1;
-				count <= 1'b0;
+				count <= 4'b0;
 			end
 			else begin
 				count <= count + 1'b1;
@@ -126,9 +127,7 @@ module reinforce(clock, reset, current_reward, combination, choice);
 	output reg [1:0] choice;
 	reg [8:0] prob;
 	reg seq;
-	reg [7:0] matrix0 [2:0];
-	reg [2:0] matrix1 [0:7];
-	reg [2:0] matrix2 [0:7];
+	reg [31:0] matrix[2:0][2:0];
 	reg ready = 1'b0;
 	reg [7:0] reward [59:0][2:0][2:0];
 	reg [1:0] action [59:0];
@@ -144,27 +143,27 @@ module reinforce(clock, reset, current_reward, combination, choice);
 	always @(posedge clock) begin
 		if (!ready) begin
 			if (seq == 1'b1) begin
-				matrix0[0] <= {5'b0, prob[2:0]};
-				matrix0[1] <= {5'b0, prob[5:3]};
-				matrix0[2] <= {5'b0, prob[8:6]};
-				matrix1[0] <= {5'b0, prob[2:0]};
-				matrix1[1] <= {5'b0, prob[5:3]};
-				matrix1[2] <= {5'b0, prob[8:6]};
-				matrix2[0] <= {5'b0, prob[2:0]};
-				matrix2[1] <= {5'b0, prob[5:3]};
-				matrix2[2] <= {5'b0, prob[8:6]};
+				matrix[0][0] <= {5'b0, prob[2:0]};
+				matrix[0][1] <= {5'b0, prob[5:3]};
+				matrix[0][2] <= {5'b0, prob[8:6]};
+				matrix[1][0] <= {5'b0, prob[2:0]};
+				matrix[1][1] <= {5'b0, prob[5:3]};
+				matrix[1][2] <= {5'b0, prob[8:6]};
+				matrix[2][0] <= {5'b0, prob[2:0]};
+				matrix[2][1] <= {5'b0, prob[5:3]};
+				matrix[2][2] <= {5'b0, prob[8:6]};
 				ready <= 1'b1;
 			end
 			else begin
-				matrix0[0] = {5'b0, prob[8:6]};
-				matrix0[1] = {5'b0, prob[5:3]};
-				matrix0[2] = {5'b0, prob[2:0]};
-				matrix1[0] = {5'b0, prob[8:6]};
-				matrix1[1] = {5'b0, prob[5:3]};
-				matrix1[2] = {5'b0, prob[2:0]};
-				matrix2[0] = {5'b0, prob[8:6]};
-				matrix2[1] = {5'b0, prob[5:3]};
-				matrix2[2] = {5'b0, prob[2:0]};
+				matrix[0][0] = {5'b0, prob[8:6]};
+				matrix[0][1] = {5'b0, prob[5:3]};
+				matrix[0][2] = {5'b0, prob[2:0]};
+				matrix[1][0] = {5'b0, prob[8:6]};
+				matrix[1][1] = {5'b0, prob[5:3]};
+				matrix[1][2] = {5'b0, prob[2:0]};
+				matrix[2][0] = {5'b0, prob[8:6]};
+				matrix[2][1] = {5'b0, prob[5:3]};
+				matrix[2][2] = {5'b0, prob[2:0]};
 				ready = 1'b1;
 			end
 		end
@@ -172,25 +171,11 @@ module reinforce(clock, reset, current_reward, combination, choice);
 		if (comp) begin
 			if (t_tracker < game) begin
 				t_tracker <= t_tracker + 1'b1;
-				case (action[t_tracker])
-					2'b0: begin
-						matrix0[0] <= matrix0[0] + alpha*reward[game - t_tracker][0][0]*(e^(matrix0[1]) + e^(matrix0[2])/ (e^(matrix0[0]) + e^(matrix0[1]) + e^(matrix0[2])));
-						matrix0[1] <= matrix0[0] + alpha*reward[game - t_tracker][0][1]*(e^(matrix0[0]) + e^(matrix0[2])/ (e^(matrix0[0]) + e^(matrix0[1]) + e^(matrix0[2])));
-						matrix0[2] <= matrix0[0] + alpha*reward[game - t_tracker][0][2]*(e^(matrix0[1]) + e^(matrix0[0])/ (e^(matrix0[0]) + e^(matrix0[1]) + e^(matrix0[2])));
-					end
-					2'b1: begin
-						matrix1[0] <= matrix1[0] + alpha*reward[game - t_tracker][1][0]*(e^(matrix1[1]) + e^(matrix1[2])/ (e^(matrix1[0]) + e^(matrix1[1]) + e^(matrix1[2])));
-						matrix1[1] <= matrix1[0] + alpha*reward[game - t_tracker][1][1]*(e^(matrix1[0]) + e^(matrix1[2])/ (e^(matrix1[0]) + e^(matrix1[1]) + e^(matrix1[2])));
-						matrix1[2] <= matrix1[0] + alpha*reward[game - t_tracker][1][2]*(e^(matrix1[1]) + e^(matrix1[0])/ (e^(matrix1[0]) + e^(matrix1[1]) + e^(matrix1[2])));
-					end
-					2'b10: begin
-						matrix2[0] <= matrix2[0] + alpha*reward[game - t_tracker][1][0]*(e^(matrix2[1]) + e^(matrix2[2])/ (e^(matrix2[0]) + e^(matrix2[1]) + e^(matrix2[2])));
-						matrix2[1] <= matrix2[0] + alpha*reward[game - t_tracker][1][1]*(e^(matrix2[0]) + e^(matrix2[2])/ (e^(matrix2[0]) + e^(matrix2[1]) + e^(matrix2[2])));
-						matrix2[2] <= matrix2[0] + alpha*reward[game - t_tracker][1][2]*(e^(matrix2[1]) + e^(matrix2[0])/ (e^(matrix2[0]) + e^(matrix2[1]) + e^(matrix2[2])));
-					end
-				endcase
-				
+				matrix[action[t_tracker]][0] <= matrix[action[t_tracker]][0] + alpha*reward[game - t_tracker][0][0]*(e^(matrix0[1]) + e^(matrix[action[t_tracker]][2])/ (e^(matrix[action[t_tracker]][0]) + e^(matrix[action[t_tracker]][1]) + e^(matrix[action[t_tracker]][2])));
+				matrix[action[t_tracker]][1] <= matrix[action[t_tracker]][0] + alpha*reward[game - t_tracker][0][1]*(e^(matrix0[0]) + e^(matrix[action[t_tracker]][2])/ (e^(matrix[action[t_tracker]][0]) + e^(matrix[action[t_tracker]][1]) + e^(matrix[action[t_tracker]][2])));
+				matrix[action[t_tracker]][2] <= matrix[action[t_tracker]][0] + alpha*reward[game - t_tracker][0][2]*(e^(matrix0[1]) + e^(matrix[action[t_tracker]][0])/ (e^(matrix[action[t_tracker]][0]) + e^(matrix[action[t_tracker]][1]) + e^(matrix[action[t_tracker]][2])));
 			end
+			
 			else begin
 				t_tracker <= 6'b0;
 				comp <= 1'b0;
