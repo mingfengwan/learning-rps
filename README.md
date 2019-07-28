@@ -2,4 +2,5 @@
 Rock Paper Scissor with AI
 
 # To do
-- Do the opposite
+- Code integration 
+- Fully test reinforce 
