@@ -1,4 +1,4 @@
-module pic_display 	(
+module project 	(
 		CLOCK_50,						//	On Board 50 MHz
 		// Your inputs and outputs here
         KEY,
@@ -31,12 +31,14 @@ module pic_display 	(
 	
 
 	wire reset_n, enable, q;
+	assign rest_n = KEY[0];
 	reg [2:0] colour;
-	reg [7:0] x, y;
+	reg [7:0] x;
+	reg [6:0] y;
 
 
 
-     	reg x_direction, y_direction;
+   reg x_direction, y_direction;
 	
 	//for x address
 	always@(posedge CLOCK_50)
@@ -70,7 +72,7 @@ module pic_display 	(
 				x <= x + 1'b1;
 		else
 				x <= x - 1'b1;
-		end
+	end
 
 
 	//for y address
@@ -89,16 +91,17 @@ module pic_display 	(
 		if(reset_n == 1'b0)
 			y_direction <= 1'b0;
 		else	
-
+		begin
+			if(y_direction == 1'b1)
 			begin
-				if(y_in + 1 > 8'0111000)
+				if(y + 1'b1 > 7'b1111000)
 					y_direction <= 1'b0;
 				else
 					y_direction <= 1'b1;
-			   end
+			end
 			else
 			begin
-				if(y_in == 8'b00000000)
+				if(y == 7'b0)
 					y_direction <= 1'b1;
 				else
 					y_direction <= 1'b0;
@@ -107,16 +110,17 @@ module pic_display 	(
 	end
 
 
-	//
-	wire addr;
-	vga_address_translator t1(x, y, addr)
+	
+	wire [14:0] addr;
+	vga_address_translator t1(x, y, addr);
 	defparam t1.RESOLUTION = "160x120";
 
-
-	pic p_0(       //Rom file
-	address(addr),
-	clock(VGA_CLK),
-	q(q));
+	
+	//rom module to store mif
+	pic p_0(      
+	.address(addr),
+	.clock(VGA_CLK),
+	.q(q));
 	
 	
 
@@ -125,18 +129,20 @@ module pic_display 	(
 	always @(posedge VGA_CLK or negedge reset_n)
 	begin
 		if (!reset_n)
-			colour <= 3'b000 
-
-		else if (enable == 1)
+			colour <= 3'b000;
+		else if (enable == 1) begin
 			case (q)
 				1'b1: begin
 					colour <= 3'b111;
+				end
 				1'b0: begin
-					colour <= 3'b000; 
+					colour <= 3'b000;
+				end 
 			endcase
+		end
 		else
-			colour <= 3'b000 
-
+			colour <= 3'b000;
+	
 
 	end
 
