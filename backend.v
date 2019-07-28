@@ -22,7 +22,7 @@ endmodule
 
 module initialize_prob(
 	input clock,
-	output reg prob [8:0] = 9'b0,
+	output reg [8:0] prob = 9'b0,
 	output reg seq = 1'b0
 	);
 	
@@ -48,57 +48,63 @@ module markov(clock, reset, combination, choice);
 	random r0(.clock(clock), .choice(random_choice));
 	
 	always @(posedge clock) begin
+		if (reset == 1'b0) begin
+			ready <= 1'b0;
+		end
+		
 		if (!ready) begin
 			
-			if (count_sub == 9) begin
+			if (count == 9) begin
 				ready <= 1'b1;
+				count <= 1'b0;
 			end
 			else begin
 				count <= count + 1'b1;
-				matrix[count] <= 3'b0;
+				matrix[count][0] <= 8'b0;
+				matrix[count][1] <= 8'b0;
+				matrix[count][2] <= 8'b0;
 			end
 			
 		end
 	end
 	
 	always @(combination) begin
-		if (reset == 1'b0) begin
-			ready = 1'b0;
-		end
-		
+	
 		if (ready & !(^previous === 1'bX)) begin
 			matrix[previous][combination[1:0]] = matrix[previous][combination[1:0]] + 1'b1;
 			
 			if (matrix[combination][0] == matrix[combination][1]) begin
-				if (matrix[combination][0] < matrix[combination][2])
-					choice = 2'b10;
+				if (matrix[combination][0] < matrix[combination][2]) //user pick 10 (paper)
+					choice = 2'b01;
+				
+				else if (matrix[combination][0] > matrix[combination][2]) begin //user pick 00 (rock) or 01 (scissor)
+					choice = {random_choice[0], 1'b0};
+				end
 				else begin
-					if (matrix[combination][0] > matrix[combination][2]) begin
-						choice = {1'b0, random_choice[0]};
-					end
+					choice = random_choice;
 				end
 					
 			end
 				
 			else begin
 				if (matrix[combination][0] > matrix[combination][1]) begin
-					if (matrix[combination][1] > matrix[combination][2])
-						choice = 2'b0;
+					if (matrix[combination][1] > matrix[combination][2]) //user pick 00 (rock)
+						choice = 2'b10;
 					else begin
-						if (matrix[combination][0] > matrix[combination][2])
-							choice = 2'b0;
-						else
+						if (matrix[combination][0] > matrix[combination][2]) //user pick 00 (rock)
 							choice = 2'b10;
+						else
+							choice = 2'b01; //user pick 10 (paper)
 					end
 				end
 				else begin
-					if (matrix[combination][0] > matrix[combination][2])
-						choice = 2'b1;
+					if (matrix[combination][0] > matrix[combination][2]) //user pick 01 (scissor)
+						choice = 2'b00;
 					else begin
-						if (matrix[combination][1] > matrix[combination][2])
-							choice = 2'b1;
-						else
-							choice = 2'b10;
+						if (matrix[combination][1] > matrix[combination][2]) //user pick 01 (scissor)
+							choice = 2'b00;
+						else //user pick paper (10)
+							choice = 2'b01;
 					end
 				end
 			end	
@@ -108,10 +114,11 @@ module markov(clock, reset, combination, choice);
 			choice = random_choice;
 		end
 		previous = combination;
+		$display("%p", matrix);
 	end
 endmodule
 
-module reinforce(clock, reset, combination, choice);
+module reinforce(clock, reset, current_reward, combination, choice);
 	input clock;
 	input [7:0] current_reward;
 	input reset;
@@ -130,6 +137,7 @@ module reinforce(clock, reset, combination, choice);
 	reg [5:0] r_tracker = 6'b0;
 	reg [7:0] alpha = 0000_1101;
 	reg [5:0] t_tracker = 6'b0;
+	reg e, previous; //TODO
 	
 	initialize_prob(clock, prob, seq);
 	
@@ -164,7 +172,7 @@ module reinforce(clock, reset, combination, choice);
 		if (comp) begin
 			if (t_tracker < game) begin
 				t_tracker <= t_tracker + 1'b1;
-				case (action[t_tracker]) begin
+				case (action[t_tracker])
 					2'b0: begin
 						matrix0[0] <= matrix0[0] + alpha*reward[game - t_tracker][0][0]*(e^(matrix0[1]) + e^(matrix0[2])/ (e^(matrix0[0]) + e^(matrix0[1]) + e^(matrix0[2])));
 						matrix0[1] <= matrix0[0] + alpha*reward[game - t_tracker][0][1]*(e^(matrix0[0]) + e^(matrix0[2])/ (e^(matrix0[0]) + e^(matrix0[1]) + e^(matrix0[2])));
@@ -180,7 +188,7 @@ module reinforce(clock, reset, combination, choice);
 						matrix2[1] <= matrix2[0] + alpha*reward[game - t_tracker][1][1]*(e^(matrix2[0]) + e^(matrix2[2])/ (e^(matrix2[0]) + e^(matrix2[1]) + e^(matrix2[2])));
 						matrix2[2] <= matrix2[0] + alpha*reward[game - t_tracker][1][2]*(e^(matrix2[1]) + e^(matrix2[0])/ (e^(matrix2[0]) + e^(matrix2[1]) + e^(matrix2[2])));
 					end
-				end
+				endcase
 				
 			end
 			else begin
