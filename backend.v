@@ -123,13 +123,12 @@ module reinforce(clock, reset, combination, choice);
 	reg [2:0] matrix1 [0:7];
 	reg [2:0] matrix2 [0:7];
 	reg ready = 1'b0;
-	reg [7:0] reward [59:0];
-	reg [59:0] action [0:1];
+	reg [7:0] reward [59:0][2:0][2:0];
+	reg [1:0] action [59:0];
 	reg [5:0] game = 6'b0;
 	reg comp = 1'b0;
 	reg [5:0] r_tracker = 6'b0;
 	reg [7:0] alpha = 0000_1101;
-	reg [5:0] reward_sum = 6'b0;
 	reg [5:0] t_tracker = 6'b0;
 	
 	initialize_prob(clock, prob, seq);
@@ -164,23 +163,23 @@ module reinforce(clock, reset, combination, choice);
 		
 		if (comp) begin
 			if (t_tracker < game) begin
-				if (t_tracker > 0) begin
-					r_tracker <= reward_sum - reward[t_tracker - 1'b1];
-				end
-				
 				t_tracker <= t_tracker + 1'b1;
 				case (action[t_tracker]) begin
 					2'b0: begin
-						matrix0[0] <= matrix0[0] + alpha*r_track*(e^(matrix0[1]) + e^(matrix0[2])/ (e^(matrix0[0]) + e^(matrix0[1]) + e^(matrix0[2])));
-						matrix0[1] <= matrix0[0] + alpha*r_track*(e^(matrix0[0]) + e^(matrix0[2])/ (e^(matrix0[0]) + e^(matrix0[1]) + e^(matrix0[2])));
-						matrix0[2] <= matrix0[0] + alpha*r_track*(e^(matrix0[1]) + e^(matrix0[0])/ (e^(matrix0[0]) + e^(matrix0[1]) + e^(matrix0[2])));
+						matrix0[0] <= matrix0[0] + alpha*reward[game - t_tracker][0][0]*(e^(matrix0[1]) + e^(matrix0[2])/ (e^(matrix0[0]) + e^(matrix0[1]) + e^(matrix0[2])));
+						matrix0[1] <= matrix0[0] + alpha*reward[game - t_tracker][0][1]*(e^(matrix0[0]) + e^(matrix0[2])/ (e^(matrix0[0]) + e^(matrix0[1]) + e^(matrix0[2])));
+						matrix0[2] <= matrix0[0] + alpha*reward[game - t_tracker][0][2]*(e^(matrix0[1]) + e^(matrix0[0])/ (e^(matrix0[0]) + e^(matrix0[1]) + e^(matrix0[2])));
 					end
 					2'b1: begin
-						matrix1[0] <= matrix1[0] + alpha*r_track*(e^(matrix1[1]) + e^(matrix1[2])/ (e^(matrix1[0]) + e^(matrix1[1]) + e^(matrix1[2])));
-						matrix1[1] <= matrix1[0] + alpha*r_track*(e^(matrix1[0]) + e^(matrix1[2])/ (e^(matrix1[0]) + e^(matrix1[1]) + e^(matrix1[2])));
-						matrix1[2] <= matrix1[0] + alpha*r_track*(e^(matrix1[1]) + e^(matrix1[0])/ (e^(matrix1[0]) + e^(matrix1[1]) + e^(matrix1[2])));
+						matrix1[0] <= matrix1[0] + alpha*reward[game - t_tracker][1][0]*(e^(matrix1[1]) + e^(matrix1[2])/ (e^(matrix1[0]) + e^(matrix1[1]) + e^(matrix1[2])));
+						matrix1[1] <= matrix1[0] + alpha*reward[game - t_tracker][1][1]*(e^(matrix1[0]) + e^(matrix1[2])/ (e^(matrix1[0]) + e^(matrix1[1]) + e^(matrix1[2])));
+						matrix1[2] <= matrix1[0] + alpha*reward[game - t_tracker][1][2]*(e^(matrix1[1]) + e^(matrix1[0])/ (e^(matrix1[0]) + e^(matrix1[1]) + e^(matrix1[2])));
 					end
-					2'b10: ;
+					2'b10: begin
+						matrix2[0] <= matrix2[0] + alpha*reward[game - t_tracker][1][0]*(e^(matrix2[1]) + e^(matrix2[2])/ (e^(matrix2[0]) + e^(matrix2[1]) + e^(matrix2[2])));
+						matrix2[1] <= matrix2[0] + alpha*reward[game - t_tracker][1][1]*(e^(matrix2[0]) + e^(matrix2[2])/ (e^(matrix2[0]) + e^(matrix2[1]) + e^(matrix2[2])));
+						matrix2[2] <= matrix2[0] + alpha*reward[game - t_tracker][1][2]*(e^(matrix2[1]) + e^(matrix2[0])/ (e^(matrix2[0]) + e^(matrix2[1]) + e^(matrix2[2])));
+					end
 				end
 				
 			end
@@ -194,14 +193,10 @@ module reinforce(clock, reset, combination, choice);
 	always @(combination) begin
 		if (game < 60) begin
 			action[game] = combination[1:0];
-			reward[game] = current_reward;
+			reward[game][previous][previous] = reward[game - 1'b1][previous][previous] + 8'b1;
 			game = game + 1'b1;
 			comp = 1'b1;
-			reward_sum = reward_sum + current_reward;
 		end
 	end
 	
-endmodule
-
-module reinforce_matrix();
 endmodule
