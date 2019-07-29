@@ -34,9 +34,9 @@ module m2
 	wire reset_n, enable, q;
 	assign reset_n = KEY[0];
 	reg [2:0] colour;
-	reg [7:0] x;
-	reg [6:0] y;
-	wire writeEn;
+	reg [7:0] x = 8'b0;
+	reg [6:0] y = 7'b0;
+	reg writeEn = 1'b1;
 
    //reg x_direction, y_direction;
 	
@@ -45,19 +45,20 @@ module m2
 	begin
 		if(reset_n == 1'b0)
 			begin
-			x <= 1'b0;
-			y <= 1'b0;
+			x <= 8'b0;
+			y <= 7'b0;
+			writeEn <= 1'b1;
 			end
 		else
 		begin
-			if(x + 1 > 8'b10100000)
+			if(x + 1 > 8'b10100000) begin
 				x <= 1'b0;
+				y <= y + 1'b1;
+			end
 			else
 				x <= x + 1'b1;
-			if (y +1 > 7'b1111000)
-				y <= 1'b0;
-			else
-				y <= y + 1'b1;
+			if (y + 1 > 7'b1111000)
+				writeEn <= 1'b0;
 
 		end
 	end
@@ -148,18 +149,16 @@ module m2
 	begin
 		if (!reset_n)
 			colour <= 3'b000;
-		else if (enable == 1) begin
+		else begin
 			case (q)
 				1'b1: begin
-					colour <= 3'b111;
+					colour <= 3'b000;
 				end
 				1'b0: begin
-					colour <= 3'b000;
-				end 
+					colour <= 3'b010;
+				end
 			endcase
 		end
-		else
-			colour <= 3'b000;
 	
 
 	end
@@ -171,7 +170,7 @@ module m2
 			.colour(colour),
 			.x(x),
 			.y(y),
-			.plot(1'b1),
+			.plot(writeEn),
 			/* Signals for the DAC to drive the monitor. */
 			.VGA_R(VGA_R),
 			.VGA_G(VGA_G),
