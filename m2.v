@@ -1,4 +1,5 @@
-module project 	(
+module m2 	
+	(
 		CLOCK_50,						//	On Board 50 MHz
 		// Your inputs and outputs here
         KEY,
@@ -30,17 +31,19 @@ module project 	(
 	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
 	
 
-	wire reset_n, enable, q;
-	assign rest_n = KEY[0];
+	wire resetn;
+	assign resetn = KEY[0];
+	
+	wire enable, q;
 	reg [2:0] colour;
 	reg [7:0] x;
 	reg [6:0] y;
-
-
+	wire writeEn;
 
    reg x_direction, y_direction;
 	
 	//for x address
+	
 	always@(posedge CLOCK_50)
 	begin
 		if(reset_n == 1'b0)
@@ -153,7 +156,7 @@ module project 	(
 			.colour(colour),
 			.x(x),
 			.y(y),
-			.plot(1),
+			.plot(1'b1),
 			/* Signals for the DAC to drive the monitor. */
 			.VGA_R(VGA_R),
 			.VGA_G(VGA_G),
@@ -164,7 +167,7 @@ module project 	(
 			.VGA_SYNC(VGA_SYNC_N),
 			.VGA_CLK(VGA_CLK));
 		defparam VGA.RESOLUTION = "160x120";
-		defparam VGA.MONOCHROME = "TRUE";
+		defparam VGA.MONOCHROME = "FALSE";
 		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
 		defparam VGA.BACKGROUND_IMAGE = "black.mif";
 endmodule
