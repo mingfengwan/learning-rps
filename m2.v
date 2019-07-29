@@ -31,16 +31,39 @@ module project 	(
 	
 
 	wire reset_n, enable, q;
-	assign rest_n = KEY[0];
+	assign reset_n = KEY[0];
 	reg [2:0] colour;
 	reg [7:0] x;
 	reg [6:0] y;
 
 
 
-   reg x_direction, y_direction;
+   //reg x_direction, y_direction;
+	
+
+	always@(posedge CLOCK_50)
+	begin
+		if(reset_n == 1'b0)
+			begin
+			x <= 1'b0;
+			y <= 1'b0;
+			end
+		else
+		begin
+			if(x + 1 > 8'b10100000)
+				x <= 1'b0;
+			else
+				x <= x + 1'b1;
+			if (y +1 > 7'b1111000)
+				y <= 1'b0;
+			else
+				y <= y + 1'b1;
+
+		end
+	end
 	
 	//for x address
+	/*
 	always@(posedge CLOCK_50)
 	begin
 		if(reset_n == 1'b0)
@@ -109,7 +132,7 @@ module project 	(
 		end
 	end
 
-
+*/
 	
 	wire [14:0] addr;
 	vga_address_translator t1(x, y, addr);
@@ -146,15 +169,15 @@ module project 	(
 
 	end
 
-
+/*
 	vga_adapter VGA(
-			.resetn(resetn),
+			.resetn(reset_n),
 			.clock(CLOCK_50),
 			.colour(colour),
 			.x(x),
 			.y(y),
-			.plot(1),
-			/* Signals for the DAC to drive the monitor. */
+			.plot(1'b1),
+			// Signals for the DAC to drive the monitor
 			.VGA_R(VGA_R),
 			.VGA_G(VGA_G),
 			.VGA_B(VGA_B),
@@ -166,9 +189,8 @@ module project 	(
 		defparam VGA.RESOLUTION = "160x120";
 		defparam VGA.MONOCHROME = "TRUE";
 		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
-		defparam VGA.BACKGROUND_IMAGE = "black.mif";
+		defparam VGA.BACKGROUND_IMAGE = "black.mif"; . */
 endmodule
-
 
 
 /*
