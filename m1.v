@@ -11,13 +11,72 @@ module exa(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX4, HEX5, LEDR);
 
 	wire start;
 	wire [1:0] user, com;
+	//need to have a multiplexer for computer's choice
+	wire com_ra, com_m, com_re;  // com choice for random, makov, reinforce
 	reg [7:0] com_score, user_score;
 	reg equ, uwin, cwin;
+	
+	
+	parameter ROCK = 0;
+	parameter PAPER = 1;
+	parameter SCISSOR = 2;
 	
 	assign user = SW[1:0]; // 00 is rock, 01 is scissor, 10 is paper
 	assign start = SW[9]; 
 	assign reset = KEY[0];
+		
+	//reg reset_u, reset_c to start drawing
+	reg reset_u, reset_c, player, choice_u, choice_c;
+	wire VGA_CLK, VGA_HS, VGA_VS,VGA_BLANK_N,VGA_SYNC_N;
+	wire [9:0]	VGA_R, VGA_G, VGA_B;
 	
+	assign reset_u = KEY[1];
+	assign reset_c = KEY[2];
+	
+	markov mar (.clock(CLOCK_50), .reset(reset), .combination(???????), .choice(com_m));
+	reinforce re(.clock(CLOCK_50), .reset(reset), .current_reward(????), .combination(????), .choice(choice_re));
+	random computer(
+	.clock(CLOCK_50),
+	.choice(com_ra)
+	);
+	//computer's choice
+	always @(*)
+	begin
+	case(SW[9:8])
+	2'b00: com = com_ra;
+	2'b01: com = com_m;
+	2'b10: com = com_re;
+	end
+	
+	 m2 user(
+		.CLOCK_50(CLOCK_50),						
+		.reset_n(reset_u),
+		.player(0),
+		.choice(choice_u),
+		.VGA_CLK(VGA_HS),   						
+		.VGA_HS(VGA_HS),							
+		.VGA_VS(VGA_VS),							
+		.VGA_BLANK_N(VGA_BLANK_N),						
+		.VGA_SYNC_N(VGA_SYNC_N),						
+		.VGA_R(VGA_R),   						
+		.VGA_G(VGA_G),	 						
+		.VGA_B(VGA_B)   						
+	);
+	
+	m2 computer(
+		.CLOCK_50(CLOCK_50),						
+		.reset_n(reset_c),
+		.player(1),
+		.choice(choice_c),
+		.VGA_CLK(VGA_HS),   						
+		.VGA_HS(VGA_HS),							
+		.VGA_VS(VGA_VS),							
+		.VGA_BLANK_N(VGA_BLANK_N),						
+		.VGA_SYNC_N(VGA_SYNC_N),						
+		.VGA_R(VGA_R),   						
+		.VGA_G(VGA_G),	 						
+		.VGA_B(VGA_B)   						
+	);
 
 	always @(posedge CLOCK_50)
 	begin
@@ -30,60 +89,72 @@ module exa(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX4, HEX5, LEDR);
 		end
 		else if (start == 1)begin
 		    if (user == 2'b0) begin //user is rock
+			choice_u <= 0;
 			case (com) //com is rock
 			2'b00: begin equ <= 1;
 				     uwin <= 0;
 				     cwin <= 0;
+					  choice_c <=0;
 			end
 			2'b01: begin equ <= 0; //com is scissor
 				     uwin <= 1;
 				     cwin <= 0;
 				     user_score <= user_score + 1'b1;
+					  choice_c <= 1;
 			end
 			2'b10: begin equ <= 0; //com is paper
 				     uwin <= 0;
 				     cwin <= 1;
 				     com_score <= com_score + 1'b1;
+					  choice_c <= 2;
 			end
 			endcase
 			end
 			
 		   else if (user == 2'b01) begin //user is scissor
+			choice_u <= 1;
 			case (com) //com is rock
 			2'b00: begin equ <= 0;
 				     uwin <= 0;
 				     cwin <= 1;
 				     com_score <= com_score + 1'b1;
+					  choice_c <=0;
 			end
 			2'b01: begin equ <= 1; //com is scissor
 				     uwin <= 0;
 				     cwin <= 0;
+					  choice_c <= 1;
 				     
 			end
 			2'b10: begin equ <= 0; //com is paper
 				     uwin <= 1;
 				     cwin <= 0;
 				     user_score <= user_score + 1'b1;
+					  choice_c <= 2;
 			end
 			endcase
 			end
 
 		    else if (user == 2'b01) begin //user is paper
+			 choice_u <= 2;
 			case (com) //com is rock
 			2'b00: begin equ <= 0;
 				     uwin <= 1;
 				     cwin <= 0;
 				     user_score <= user_score + 1'b1;
+					  choice_c <=0;
 
 			end
 			2'b01: begin equ <= 0; //com is scissor
 				     uwin <= 0;
 				     cwin <= 1;
 				     com_score <= com_score + 1'b1; 
+					  choice_c <= 1;
 			end
 			2'b10: begin equ <= 0; //com is paper
 				     uwin <= 1;
 				     cwin <= 0;
+					  choice_c <= 2;
 				     
 			end
 			endcase
@@ -120,11 +191,7 @@ module exa(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX4, HEX5, LEDR);
 	   .seg(HEX2)
 		);	
 
-	//computer's choice
-	random computer(
-	.clock(CLOCK_50),
-	.choice(com)
-	);
+
 
 	hex_decoder h3(
 	   .hex_num({2'b00, com}),
@@ -194,101 +261,3 @@ module hex_decoder(hex_num, seg);
 endmodule
 
 
-
-module random(
-	input clock,
-	output reg [1:0] choice = 2'b0
-	);
-	
-	always @(posedge clock) begin
-		if (choice < 2)
-			choice <= choice + 1;
-		else 
-			choice <= 2'b0;
-	end	
-endmodule
-
-module markov(clock, reset, combination, choice);
-	input clock;
-	input reset;
-	input [3:0] combination;
-	reg [3:0] previous;
-	real matrix [8:0][1:0][2:0];
-	output reg [1:0] choice;
-	reg ready = 1'b0;
-	reg [4:0] count = 5'b0;
-	reg [1:0] count_sub = 2'b0;
-	
-	random r0(.clock(clock), .choice(choice));
-	
-	always @(posedge clock) begin
-		if (!ready) begin
-			
-			if (count_sub == 2) begin
-				count_sub <= 2'b0;
-				count <= count + 1;
-			end
-			else 
-				count_sub <= count_sub + 1;
-			
-			if (count < 9) begin
-				matrix[count][1][count_sub] <= 0.333333;
-				matrix[count][0][count_sub] <= 0;
-			end
-			else if (count < 18) begin
-				matrix[count - 9][1][count_sub] <= 0.333333;
-				matrix[count - 9][0][count_sub] <= 0;
-			end
-			else
-				ready <= 1'b1;
-			
-		end
-	end
-	
-	always @(*) begin
-		if (reset == 1'b0) begin
-			ready = 1'b0;
-		end
-		
-		if (ready) begin
-			matrix[previous][0][combination[1:0]] = matrix[previous][0][combination[1:0]] + 1;
-			matrix[previous][1][0] = (matrix[previous][0][0] / matrix[previous][0][0] + matrix[previous][0][1] + matrix[previous][0][2]);
-			matrix[previous][1][1] = (matrix[previous][0][1] / matrix[previous][0][0] + matrix[previous][0][1] + matrix[previous][0][2]);
-			matrix[previous][1][2] = (matrix[previous][0][2] / matrix[previous][0][0] + matrix[previous][0][1] + matrix[previous][0][2]);
-			
-			if (matrix[combination][1][0] == matrix[combination][1][1]) begin
-				if (matrix[combination][1][0] < matrix[combination][1][2])
-					choice = 2'b10;
-				else begin
-					if (matrix[combination][1][0] > matrix[combination][1][2]) begin
-						choice = {0, choice[0]};
-					end
-				end
-					
-			end
-				
-			else begin
-				if (matrix[combination][1][0] > matrix[combination][1][1]) begin
-					if (matrix[combination][1][1] > matrix[combination][1][2])
-						choice = 2'b0;
-					else begin
-						if (matrix[combination][1][0] > matrix[combination][1][2])
-							choice = 2'b0;
-						else
-							choice = 2'b10;
-					end
-				end
-				else begin
-					if (matrix[combination][1][0] > matrix[combination][1][2])
-						choice = 2'b1;
-					else begin
-						if (matrix[combination][1][1] > matrix[combination][1][2])
-							choice = 2'b1;
-						else
-							choice = 2'b10;
-					end
-				end
-			end	
-		end
-	end
-endmodule
