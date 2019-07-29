@@ -31,19 +31,38 @@ module m2
 	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
 	
 
-	wire resetn;
-	assign resetn = KEY[0];
-	
-	wire enable, q;
+	wire reset_n, enable, q;
+	assign reset_n = KEY[0];
 	reg [2:0] colour;
 	reg [7:0] x;
 	reg [6:0] y;
 	wire writeEn;
 
-   reg x_direction, y_direction;
+   //reg x_direction, y_direction;
 	
-	//for x address
+
+	always@(posedge CLOCK_50)
+	begin
+		if(reset_n == 1'b0)
+			begin
+			x <= 1'b0;
+			y <= 1'b0;
+			end
+		else
+		begin
+			if(x + 1 > 8'b10100000)
+				x <= 1'b0;
+			else
+				x <= x + 1'b1;
+			if (y +1 > 7'b1111000)
+				y <= 1'b0;
+			else
+				y <= y + 1'b1;
+
+		end
+	end
 	
+	/*
 	always@(posedge CLOCK_50)
 	begin
 		if(reset_n == 1'b0)
@@ -112,7 +131,7 @@ module m2
 		end
 	end
 
-
+*/
 	
 	wire [14:0] addr;
 	vga_address_translator t1(x, y, addr);
@@ -125,10 +144,6 @@ module m2
 	.clock(VGA_CLK),
 	.q(q));
 	
-	
-
-	assign reset_n = KEY[0];
-	assign enable = SW[9];
 	always @(posedge VGA_CLK or negedge reset_n)
 	begin
 		if (!reset_n)
@@ -151,7 +166,7 @@ module m2
 
 
 	vga_adapter VGA(
-			.resetn(resetn),
+			.resetn(reset_n),
 			.clock(CLOCK_50),
 			.colour(colour),
 			.x(x),
@@ -171,7 +186,6 @@ module m2
 		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
 		defparam VGA.BACKGROUND_IMAGE = "black.mif";
 endmodule
-
 
 
 /*
