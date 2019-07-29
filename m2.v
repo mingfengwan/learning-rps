@@ -1,9 +1,12 @@
 module m2 	
 	(
 		CLOCK_50,						//	On Board 50 MHz
+		reset_n,
+		player,
+		choice,
 		// Your inputs and outputs here
-        KEY,
-        SW,
+        //KEY,
+        //SW,
 		// The ports below are for the VGA output.  Do not change.
 		VGA_CLK,   						//	VGA Clock
 		VGA_HS,							//	VGA H_SYNC
@@ -16,8 +19,11 @@ module m2
 	);
 
 	input			CLOCK_50;				//	50 MHz
-	input   [9:0]   SW;
-	input   [3:0]   KEY;
+	//input   [9:0]   SW;
+	//input   [3:0]   KEY;
+	input reset_n;
+	input playder; // 0 for user,1 for computer
+	input choice; // 0 is rock, 1 is scissor, 2 is paper
 
 	// Declare your inputs and outputs here
 	// Do not change the following outputs
@@ -29,10 +35,14 @@ module m2
 	output	[9:0]	VGA_R;   				//	VGA Red[9:0]
 	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
 	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
+	//output WriteEn; //indicates it finished drawing one
 	
 
-	wire reset_n, enable, q;
-	assign reset_n = KEY[0];
+	wire reset_n, enable, q_s, q_r, q_p;
+	
+
+	reg q;
+	//assign reset_n = KEY[0];
 	reg [2:0] colour;
 	reg [7:0] x = 8'b0;
 	reg [6:0] y = 7'b0;
@@ -48,6 +58,12 @@ module m2
 			x <= 8'b0;
 			y <= 7'b0;
 			writeEn <= 1'b1;
+			if (choice == 0) // choice is rock
+				q <= q_r;
+			else if (choice == 1) // choice is scissor
+				q <= q_s;
+			else //choice is paper
+				q <= q_p;
 			end
 		else
 		begin
@@ -60,79 +76,11 @@ module m2
 			if (y + 1 > 7'b1111000)
 				writeEn <= 1'b0;
 
-		end
+		end	
+			
 	end
 	
-	/*
-	always@(posedge CLOCK_50)
-	begin
-		if(reset_n == 1'b0)
-			x_direction <= 1'b1;
-		else
-		begin
-			if(x_direction == 1'b1)
-			begin
-				if(x + 1 > 8'b10100000)
-					x_direction <= 1'b0;
-				else
-					x_direction <= 1'b1;
-			   end
-			else
-			begin
-				if(x == 8'b00000000)
-					x_direction <= 1'b1;
-				else
-					x_direction <= 1'b0;
-			end
-		end
-	end
-	
-	always@(posedge CLOCK_50, negedge reset_n)begin
-	   if(reset_n == 1'b0)begin
-			x <= 8'b00000000;
-		end
-		else if(x_direction == 1'b1)
-				x <= x + 1'b1;
-		else
-				x <= x - 1'b1;
-	end
 
-
-	//for y address
-	always@(posedge CLOCK_50, negedge reset_n)begin
-	   if(reset_n == 1'b0)begin
-			y <= 60;
-		end
-		else if(y_direction == 1'b1)
-				y <= y + 1'b1;
-		else
-				y <= y - 1'b1;
-		end
-		
-	always@(posedge CLOCK_50)
-	begin
-		if(reset_n == 1'b0)
-			y_direction <= 1'b0;
-		else	
-		begin
-			if(y_direction == 1'b1)
-			begin
-				if(y + 1'b1 > 7'b1111000)
-					y_direction <= 1'b0;
-				else
-					y_direction <= 1'b1;
-			end
-			else
-			begin
-				if(y == 7'b0)
-					y_direction <= 1'b1;
-				else
-					y_direction <= 1'b0;
-			end
-		end
-	end
-
-*/
 	
 	wire [14:0] addr;
 	vga_address_translator t1(x, y, addr);
@@ -140,19 +88,39 @@ module m2
 
 	
 	//rom module to store mif
-	pic p_0(      
+	/*pic p_0(      
 	.address(addr),
 	.clock(VGA_CLK),
-	.q(q));
+	.q(q));*/
 	
-	always @(posedge VGA_CLK or negedge reset_n)
+	//rom module to store scissor.mif
+	scissor (
+	.address(addr),
+	.clock(CLOCK_50),
+	.q(q_s));
+	//rom module to store paper.mif
+	paper p0(
+	.address(addr),
+	.clock(CLOCK_50),
+	.q(q_p));
+	//rom module to store rock.mif
+	rock r0 (
+	.address(addr),
+	.clock(CLOCK_50),
+	.q(q_r));
+	
+	//always @(posedge VGA_CLK or negedge reset_n)
+	always @(posedge CLOCK_50 or negedge reset_n)
 	begin
 		if (!reset_n)
 			colour <= 3'b000;
 		else begin
 			case (q)
 				1'b1: begin
-					colour <= 3'b000;
+					if (player == 0) //user's choice, background is black
+						colour <= 3'b000;
+					else:
+						colour <= 3'b111; //computer's choice, background is white
 				end
 				1'b0: begin
 					colour <= 3'b010;
