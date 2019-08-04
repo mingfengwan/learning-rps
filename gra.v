@@ -54,7 +54,7 @@ module gra
 
 	
 
-	always@(posedge CLOCK_50)
+	always@(posedge CLOCK_50, negedge reset_n)
 	begin
 		if(reset_n == 1'b0)
 			begin
