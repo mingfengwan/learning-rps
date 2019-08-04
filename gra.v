@@ -1,4 +1,12 @@
-module gra(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR);
+module gra(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR, 
+		VGA_CLK,   						//	VGA Clock
+		VGA_HS,							//	VGA H_SYNC
+		VGA_VS,							//	VGA V_SYNC
+		VGA_BLANK_N,						//	VGA BLANK
+		VGA_SYNC_N,						//	VGA SYNC
+		VGA_R,   						//	VGA Red[9:0]
+		VGA_G,	 						//	VGA Green[9:0]
+		VGA_B);
 	input [9:0] SW; // SW[9] is load
 	input [3:0] KEY; // KEY[0] is reset
 	input CLOCK_50;
@@ -10,14 +18,14 @@ module gra(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR);
 
 
 	
-	wire			VGA_CLK;   				//	VGA Clock
-	wire			VGA_HS;					//	VGA H_SYNC
-	wire			VGA_VS;					//	VGA V_SYNC
-	wire			VGA_BLANK_N;				//	VGA BLANK
-	wire			VGA_SYNC_N;				//	VGA SYNC
-	wire	[9:0]	VGA_R;   				//	VGA Red[9:0]
-	wire	[9:0]	VGA_G;	 				//	VGA Green[9:0]
-	wire	[9:0]	VGA_B;   				//	VGA Blue[9:0]
+	output			VGA_CLK;   				//	VGA Clock
+	output			VGA_HS;					//	VGA H_SYNC
+	output			VGA_VS;					//	VGA V_SYNC
+	output			VGA_BLANK_N;				//	VGA BLANK
+	output			VGA_SYNC_N;				//	VGA SYNC
+	output	[9:0]	VGA_R;   				//	VGA Red[9:0]
+	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
+	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
 	
 	
 	assign user = SW[1:0]; // 00 is rock, 01 is scissor, 10 is paper
@@ -28,7 +36,7 @@ module gra(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR);
 		.reset_n(start),
 		//.player(0),
 		.choice(user),
-		.VGA_CLK(VGA_HS),   						
+		.VGA_CLK(VGA_CLK),   						
 		.VGA_HS(VGA_HS),							
 		.VGA_VS(VGA_VS),							
 		.VGA_BLANK_N(VGA_BLANK_N),						

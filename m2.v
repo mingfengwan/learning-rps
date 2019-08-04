@@ -1,7 +1,16 @@
 //Milestone_2, have the random player& Markov's player
 
 
-module m2(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR);
+module m2(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
+	VGA_CLK,   						//	VGA Clock
+		VGA_HS,							//	VGA H_SYNC
+		VGA_VS,							//	VGA V_SYNC
+		VGA_BLANK_N,						//	VGA BLANK
+		VGA_SYNC_N,						//	VGA SYNC
+		VGA_R,   						//	VGA Red[9:0]
+		VGA_G,	 						//	VGA Green[9:0]
+		VGA_B);
+		
 	input [9:0] SW; // SW[9] is load
 	input [3:0] KEY; // KEY[0] is reset
 	input CLOCK_50;
@@ -17,14 +26,14 @@ module m2(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR);
 	reg equ, uwin, cwin;
 	wire [1:0] com_ra, com_m, com_re;  // com choice for random, makov, reinforce
 	
-	wire			VGA_CLK;   				//	VGA Clock
-	wire			VGA_HS;					//	VGA H_SYNC
-	wire			VGA_VS;					//	VGA V_SYNC
-	wire			VGA_BLANK_N;				//	VGA BLANK
-	wire			VGA_SYNC_N;				//	VGA SYNC
-	wire	[9:0]	VGA_R;   				//	VGA Red[9:0]
-	wire	[9:0]	VGA_G;	 				//	VGA Green[9:0]
-	wire	[9:0]	VGA_B;   				//	VGA Blue[9:0]
+	output			VGA_CLK;   				//	VGA Clock
+	output			VGA_HS;					//	VGA H_SYNC
+	output			VGA_VS;					//	VGA V_SYNC
+	output			VGA_BLANK_N;				//	VGA BLANK
+	output			VGA_SYNC_N;				//	VGA SYNC
+	output	[9:0]	VGA_R;   				//	VGA Red[9:0]
+	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
+	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
 	
 	
 	assign user = SW[1:0]; // 00 is rock, 01 is scissor, 10 is paper
@@ -49,7 +58,7 @@ module m2(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR);
 	//assign reset_u = KEY[2];
 	//assign reset_c = KEY[3];
 	
-	markov mar (.clock(CLOCK_50), .reset(reset), .start(start), .combination({com_loaded, user}), .choice(com_m));
+	markov mar(.clock(CLOCK_50), .reset(reset), .start(start), .user(user), .choice(com_m));
 	//reinforce re(.clock(CLOCK_50), .reset(reset), .current_reward(????), .combination(????), .choice(choice_re));
 	random computer(
 	.clock(CLOCK_50),
@@ -70,7 +79,7 @@ module m2(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR);
 		.reset_n(start),
 		//.player(0),
 		.choice(user),
-		.VGA_CLK(VGA_HS),   						
+		.VGA_CLK(VGA_CLK),   						
 		.VGA_HS(VGA_HS),							
 		.VGA_VS(VGA_VS),							
 		.VGA_BLANK_N(VGA_BLANK_N),						
@@ -158,7 +167,7 @@ module m2(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR);
 			endcase
 			end
 
-		   else if (user == 2'b01) begin //user is paper
+		   else if (user == 2'b10) begin //user is paper
 		   //choice_u <= 2;
 			case (com_loaded) //com is rock
 			2'b00: begin equ <= 0;
@@ -473,91 +482,101 @@ module initialize_prob(
 	end	
 endmodule
 
-module markov(clock, reset, start, combination, choice);
-	input clock, start;
-	input reset;
-	input [3:0] combination;
-	reg [3:0] previous;
+module markov(clock, reset, start, user, choice);
+	input clock, reset, start;
+	input [1:0] user;
+	reg [1:0] previous;
+	reg [3:0] comb;
 	wire [1:0] random_choice;
-	reg [7:0] matrix [10:0][2:0];
-	output reg [1:0] choice;
-	reg ready = 1'b0;
+	reg [7:0] matrix [8:0][2:0];
+	output [1:0] choice;
 	reg [3:0] count = 4'b0;
 	
 	random r0(.clock(clock), .choice(random_choice));
 	
-	always @(posedge clock, negedge start, negedge reset, negedge ready) begin
-		if (reset == 1'b0) begin
-			ready <= 1'b0;
-			count <= 1'b0;
-		end
-		
-		if (!ready) begin
-			
-			if (count == 9) begin
-				ready <= 1'b1;
-				count <= 4'b0;
-			end
-			else begin
-				count <= count + 1'b1;
-				matrix[count][0] <= 8'b0;
-				matrix[count][1] <= 8'b0;
-				matrix[count][2] <= 8'b0;
-			end
-			
-		end
-		
-		if (start == 1'b0)begin
+	comparator_matrix c0(matrix[comb][0], matrix[comb][1], matrix[comb][2], choice);
 	
-		if (ready & !(^previous === 1'bX)) begin
-			matrix[previous][combination[1:0]] = matrix[previous][combination[1:0]] + 8'b1;
-			
-			if (matrix[combination][0] == matrix[combination][1]) begin
-				if (matrix[combination][0] < matrix[combination][2]) //user pick 10 (paper)
-					choice = 2'b01;
-				
-				else if (matrix[combination][0] > matrix[combination][2]) begin //user pick 00 (rock) or 01 (scissor)
-					choice = {random_choice[0], 1'b0};
-				end
-				else begin
-					choice = random_choice;
-				end
-					
-			end
-				
-			else begin
-				if (matrix[combination][0] > matrix[combination][1]) begin
-					if (matrix[combination][1] > matrix[combination][2]) //user pick 00 (rock)
-						choice = 2'b10;
-					else begin
-						if (matrix[combination][0] > matrix[combination][2]) //user pick 00 (rock)
-							choice = 2'b10;
-						else
-							choice = 2'b01; //user pick 10 (paper)
-					end
-				end
-				else begin
-					if (matrix[combination][0] > matrix[combination][2]) //user pick 01 (scissor)
-						choice = 2'b00;
-					else begin
-						if (matrix[combination][1] > matrix[combination][2]) //user pick 01 (scissor)
-							choice = 2'b00;
-						else //user pick paper (10)
-							choice = 2'b01;
-					end
-				end
-			end	
+	always @(user, choice) begin
+		case({user, choice})
+			0000: comb = 4'd0;
+			0001: comb = 4'd1;
+			0010: comb = 4'd2;
+			0100: comb = 4'd3;
+			0101: comb = 4'd4;
+			0110: comb = 4'd5;
+			1000: comb = 4'd6;
+			1001: comb = 4'd7;
+			1010: comb = 4'd8;
+		endcase
+	end
+	
+	always @(posedge clock, negedge reset, negedge start) begin
+		if (!reset) begin
+			count <= 4'b0;
 		end
 		
-		else begin
-			choice = random_choice;
+		else if (!start) begin
+			if (!(^previous === 1'bX)) begin
+				matrix[previous][user] <= matrix[previous][user] + 8'b1;
+			end
+			previous <= comb;
+			//$display("%p", matrix);
 		end
-		previous = combination;
-		//$display("%p", matrix);
-	end
+		
+		else if (count < 9) begin
+			count <= count + 1'b1;
+			matrix[count][0] <= 8'b0;
+			matrix[count][1] <= 8'b0;
+			matrix[count][2] <= 8'b0;
+		end
+		
 	end
 endmodule
 
+module comparator_matrix(m0, m1, m2, choice);
+	input [7:0] m0, m1, m2;
+	wire [1:0] random_choice;
+	output reg [1:0] choice;
+	
+	random r0(.clock(clock), .choice(random_choice));
+	always @(m0, m1, m2) begin
+	if (m0 == m1) begin
+		if (m0 < m2) //user pick 10 (paper)
+			choice = 2'b01;
+		
+		else if (m0 > m2) begin //user pick 00 (rock) or 01 (scissor)
+			choice = {random_choice[0], 1'b0};
+		end
+		else begin
+			choice = random_choice;
+		end
+			
+	end
+
+	else begin
+		if (m0 > m1) begin
+			if (m1 > m2) //user pick 00 (rock)
+				choice = 2'b10;
+			else begin
+				if (m0 > m2) //user pick 00 (rock)
+					choice = 2'b10;
+				else
+					choice = 2'b01; //user pick 10 (paper)
+			end
+		end
+		else begin
+			if (m0 > m2) //user pick 01 (scissor)
+				choice = 2'b00;
+			else begin
+				if (m1 > m2) //user pick 01 (scissor)
+					choice = 2'b00;
+				else //user pick paper (10)
+					choice = 2'b01;
+			end
+		end
+	end
+	end
+endmodule
 
 
 

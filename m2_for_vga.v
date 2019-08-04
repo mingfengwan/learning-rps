@@ -1,5 +1,5 @@
 
-module second_mt 	
+module m2_for_vga 	
 	(
 		CLOCK_50,						//	On Board 50 MHz
 		//reset_n,

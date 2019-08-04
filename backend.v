@@ -207,9 +207,36 @@ module reinforce(clock, reset, current_reward, user, choice);
 	
 endmodule
 
-module theta(at, ak, ct, matrix, reward);
+module theta(clock, at, ak, ct, matrix, reward);
 	parameter one = 32'b0_01111111_00000000000000000000000;
+	parameter zero = 32'b0;
+	parameter alpha = 32'b0_01111110_11100110011001100110011;
+	reg count;
+	reg [31:0] e_sum, e_temp, pi, alpha, minus, deri, product, reward_pro;
+	reg [31:0] e_out [2:0];
+	output [31:0] theta_out;
 	
+	ALTFP_EXa e0(.clock(clock), .data(matrix[at][0]), .result(e_out[0])); //e^p0
+	ALTFP_EXa e1(.clock(clock), .data(matrix[at][1]), .result(e_out[1])); //e^p1
+	ALTFP_EXa e2(.clock(clock), .data(matrix[at][2]), .result(e_out[2])); //e^p2
+	
+	float_adder f0(.clock(clock), .add_sub(1'b1), .dataa(e_out[0]), .datab(e_out[1]), .result(e_temp)); //e^p0 + e^p1
+	float_adder f1(.clock(clock), .add_sub(1'b1), .dataa(e_out[2]), .datab(e_temp), .result(e_sum)); //e^p0 + e^p1 + e^p2
+	
+	float_divider d0(.clock(clock), .dataa(e_out[ak]), .datab(e_sum), .result(pi)); //pi(ak, ct)
+	float_adder f2(.clock(clock), .add_sub(1'b0), .dataa(minus), .datab(pi), .result(deri)); //-pi(ak, ct) or 1 - pi(ak, ct)
+	
+	float_multi mo(.clock(clock), .dataa(deri), .datab(alpha), .result(product)); //deri * alpha
+	float_multi m1(.clock(clock), .dataa(product), .datab(reward), .result(reward_pro)); //deri * alpha * reward
+	
+	float_adder f3(.clock(clock), .add_sub(1'b1), .dataa(matrix[at][ak]), .datab(reward_pro), .result(theta_out));
+	
+	if (at == ak) begin
+		assign minus = one;
+	end
+	else begin
+		assign minus = zero;
+	end
 	
 endmodule
 
