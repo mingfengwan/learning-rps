@@ -237,19 +237,6 @@ endmodule
 
 
 
-
-
-
-//module mux2to1(x, y, s, m);
-//    input x; //selected when s is 0
-//    input y; //selected when s is 1
-//    input s; //select signal
-//    output m; //output
-  
-//    assign m = s & y | ~s & x;
-    
-//endmodule
-
 module hex_decoder(hex_num, seg);
     input [3:0] hex_num;
     output reg [6:0] seg;
@@ -571,3 +558,18 @@ module markov(clock, reset, start, combination, choice);
 	end
 endmodule
 
+
+
+
+
+
+
+//module mux2to1(x, y, s, m);
+//    input x; //selected when s is 0
+//    input y; //selected when s is 1
+//    input s; //select signal
+//    output m; //output
+  
+//    assign m = s & y | ~s & x;
+    
+//endmodule
