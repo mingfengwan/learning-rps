@@ -22,20 +22,6 @@ module random(
 	end	
 endmodule
 
-module initialize_prob(
-	input clock,
-	output reg [8:0] prob = 9'b0,
-	output reg seq = 1'b0
-	);
-	
-	always @(posedge clock) begin
-		prob <= prob + 1'b1;
-		if (prob == 511) begin
-			seq <= ~seq;
-		end
-	end	
-endmodule
-
 module markov(clock, reset, start, user, choice);
 	input clock, reset, start;
 	input [1:0] user;
@@ -45,9 +31,7 @@ module markov(clock, reset, start, user, choice);
 	reg [7:0] matrix [8:0][2:0];
 	output [1:0] choice;
 	reg [3:0] count = 4'b0;
-	
-	random r0(.clock(clock), .choice(random_choice));
-	
+		
 	comparator_matrix c0(matrix[comb][0], matrix[comb][1], matrix[comb][2], choice);
 	
 	always @(user, choice) begin
@@ -132,110 +116,253 @@ module comparator_matrix(m0, m1, m2, choice);
 	end
 endmodule
 
-module reinforce(clock, reset, current_reward, user, choice);
+module comparator_32(clock, m0, m1, m2, choice);
+	input [31:0] m0, m1, m2;
 	input clock;
-	input [7:0] current_reward;
-	input reset;
-	input [3:0] combination;
+	wire [1:0] random_choice;
+	wire aeb, agb, alb, bec, bgc, blc, aec, agc, alc;
 	output reg [1:0] choice;
-	reg [8:0] prob;
-	reg seq;
+	
+	random r0(.clock(clock), .choice(random_choice));
+	float_compare c0(.clock(clock), .dataa(m0), .datab(m1), .aeb(aeb), .agb(agb), .alb(alb));
+	float_compare c1(.clock(clock), .dataa(m1), .datab(m2), .aeb(bec), .agb(bgc), .alb(blc));
+	float_compare c2(.clock(clock), .dataa(m0), .datab(m2), .aeb(aec), .agb(agc), .alb(alc));
+	
+	always @(*) begin
+	if (aeb) begin //m0 == m1
+		if (blc) //m1 < m2, user pick 10 (paper)
+			choice = 2'b01;
+		
+		else if (agc) begin //m0 > m2, user pick 00 (rock) or 01 (scissor)
+			choice = {random_choice[0], 1'b0};
+		end
+		else begin
+			choice = random_choice;
+		end
+			
+	end
+
+	else begin
+		if (agb) begin //m0 > m1
+			if (bgc) //m1 > m2, user pick 00 (rock)
+				choice = 2'b10;
+			else begin
+				if (agc) //m0 > m2, user pick 00 (rock)
+					choice = 2'b10;
+				else
+					choice = 2'b01; //user pick 10 (paper)
+			end
+		end
+		else begin
+			if (agc) //m0 > m2, user pick 01 (scissor)
+				choice = 2'b00;
+			else begin
+				if (bgc) //m1 > m2 user pick 01 (scissor)
+					choice = 2'b00;
+				else //user pick paper (10)
+					choice = 2'b01;
+			end
+		end
+	end
+	end
+
+endmodule
+
+module reinforce(clock, reset, start, user_choice, choice, ready);
+	input clock, start;
+	input [1:0] user_choice;
+	reg [6:0] count_comp;
+	reg [31:0] current_reward;
+	input reset;
+	output reg [1:0] choice;
+	output reg ready = 1'b0;
+	wire [31:0] theta_out [2:0];
 	reg [31:0] matrix[2:0][2:0];
-	reg ready = 1'b0;
-	reg [31:0] reward [59:0][2:0][2:0];
+	reg [31:0] reward [59:0];
 	reg [1:0] action [59:0];
+	reg [1:0] user [59:0];
 	reg [5:0] game = 6'b0;
 	reg comp = 1'b0;
 	reg [5:0] r_tracker = 6'b0;
-	reg [7:0] alpha = 0000_1101;
 	reg [5:0] t_tracker = 6'b0;
-	reg e, previous; //TODO
+	parameter random21 = 00111110_01010111_00001010_00111101;
+	parameter random34 = 00111110_10101110_00010100_01111011;
+	parameter random45 = 00111110_11100110_01100110_01100110;
 	
-	initialize_prob p0(clock, prob, seq);
+	parameter one = 32'b0_01111111_00000000000000000000000;
+	parameter zero = 32'b0;
+	parameter negone = 32'b10111111_10000000_00000000_00000000;
+	//TODO: add ready 
+	random r0(.clock(clock), .choice(random_choice));
 	
-	always @(posedge clock) begin
-		if (!ready) begin
-			if (seq == 1'b1) begin
-				matrix[0][0] <= {5'b0, prob[2:0]};
-				matrix[0][1] <= {5'b0, prob[5:3]};
-				matrix[0][2] <= {5'b0, prob[8:6]};
-				matrix[1][0] <= {5'b0, prob[2:0]};
-				matrix[1][1] <= {5'b0, prob[5:3]};
-				matrix[1][2] <= {5'b0, prob[8:6]};
-				matrix[2][0] <= {5'b0, prob[2:0]};
-				matrix[2][1] <= {5'b0, prob[5:3]};
-				matrix[2][2] <= {5'b0, prob[8:6]};
-				ready <= 1'b1;
+	theta t0(.clock(clock), .at(action[t_tracker]), 
+	.matrix0(matrix[user[t_tracker - 6'b1]][0]),
+	.matrix1(matrix[user[t_tracker - 6'b1]][1]),
+	.matrix2(matrix[user[t_tracker - 6'b1]][2]),
+	.reward(reward[game - t_tracker]), 
+	.theta_out0(theta_out[0]), .theta_out1(theta_out[1]), .theta_out2(theta_out[2]));
+	
+	comparator_32(matrix[user_choice][0], matrix[user_choice][1], matrix[user_choice][2], choice);
+	
+	float_adder f0(.clock(clock), .add_sub(1'b1), .dataa(reward[game - 6'b1]), 
+	.datab(current_reward), .result(reward[game]));
+	
+	always @(posedge clock, negedge reset) begin
+		if (!reset) begin
+			if (random_choice == 2'b1) begin
+				matrix[0][0] <= random21;
+				matrix[0][1] <= random34;
+				matrix[0][2] <= random45;
+				matrix[1][0] <= random34;
+				matrix[1][1] <= random21;
+				matrix[1][2] <= random45;
+				matrix[2][0] <= random34;
+				matrix[2][1] <= random21;
+				matrix[2][2] <= random45;
 			end
 			else begin
-				matrix[0][0] = {5'b0, prob[8:6]};
-				matrix[0][1] = {5'b0, prob[5:3]};
-				matrix[0][2] = {5'b0, prob[2:0]};
-				matrix[1][0] = {5'b0, prob[8:6]};
-				matrix[1][1] = {5'b0, prob[5:3]};
-				matrix[1][2] = {5'b0, prob[2:0]};
-				matrix[2][0] = {5'b0, prob[8:6]};
-				matrix[2][1] = {5'b0, prob[5:3]};
-				matrix[2][2] = {5'b0, prob[2:0]};
+				matrix[0][0] <= random34;
+				matrix[0][1] <= random45;
+				matrix[0][2] <= random21;
+				matrix[1][0] <= random21;
+				matrix[1][1] <= random34;
+				matrix[1][2] <= random45;
+				matrix[2][0] <= random45;
+				matrix[2][1] <= random21;
+				matrix[2][2] <= random34;
+			end
+		end
+	
+		else if (count_comp == 100) begin
+			if (t_tracker < game) begin
+				t_tracker <= t_tracker + 6'b1;
+				count_comp <= 7'b0;
+			end
+			else begin
+				action[game] <= choice;
+				if (game == 0) begin
+					reward[0] <= current_reward;
+				end
+				user[game] <= user_choice;
+				game <= game + 6'b1;
 				ready = 1'b1;
 			end
 		end
 		
-		if (comp) begin
-			if (t_tracker < game) begin
-				t_tracker <= t_tracker + 1'b1;
-				matrix[action[t_tracker]][0] <= matrix[action[t_tracker]][0] + alpha*reward[game - t_tracker]*(e^(matrix[1]) + e^(matrix[action[t_tracker]][2])/ (e^(matrix[action[t_tracker]][0]) + e^(matrix[action[t_tracker]][1]) + e^(matrix[action[t_tracker]][2])));
-				matrix[action[t_tracker]][1] <= matrix[action[t_tracker]][1] + alpha*reward[game - t_tracker]*(e^(matrix[0]) + e^(matrix[action[t_tracker]][2])/ (e^(matrix[action[t_tracker]][0]) + e^(matrix[action[t_tracker]][1]) + e^(matrix[action[t_tracker]][2])));
-				matrix[action[t_tracker]][2] <= matrix[action[t_tracker]][2] + alpha*reward[game - t_tracker]*(e^(matrix[1]) + e^(matrix[action[t_tracker]][0])/ (e^(matrix[action[t_tracker]][0]) + e^(matrix[action[t_tracker]][1]) + e^(matrix[action[t_tracker]][2])));
-			end
-			
-			else begin
-				t_tracker <= 6'b0;
-				comp <= 1'b0;
-			end	
+		else if (count_comp < 100) begin
+			count_comp <= count_comp + 7'b1;
 		end
 	end
 	
-	always @(combination) begin
+	always @(negedge start) begin
 		if (game < 60) begin
-			action[game] = combination[1:0];
-			reward[game][previous][previous] = reward[game - 6'b1][previous][previous] + 32'b1;
-			game = game + 6'b1;
-			comp = 1'b1;
+			t_tracker <= 6'b0;
+			count_comp <= 7'b0;
+		end
+	end
+	
+	always @(*) begin
+		if (user_choice == 2'b0) begin //user is rock
+			case (choice) //choice is rock
+				2'b00: begin
+					current_reward = zero;
+				end
+			
+				2'b01: begin
+					current_reward = negone;
+				end
+				2'b10: begin //com is paper
+					current_reward = one;     
+				end
+			endcase
+		end
+			
+		else if (user_choice == 2'b01) begin //user is scissor
+			case (choice) //com is rock
+				2'b00: begin
+					current_reward = one;
+				end
+				2'b01: begin //com is scissor
+					current_reward = zero; 
+				end
+				2'b10: begin //com is paper
+					current_reward = negone;  
+				end
+			endcase
+		end
+
+		else if (user_choice == 2'b10) begin //user is paper
+			case (choice) //com is rock
+				2'b00: begin 
+					current_reward = negone;
+				end
+				2'b01: begin //com is scissor
+					current_reward = one;
+				end
+				2'b10: begin 
+					current_reward = zero;
+				end
+			endcase
 		end
 	end
 	
 endmodule
 
-module theta(clock, at, ak, ct, matrix, reward);
+module theta(clock, matrix0, matrix1, matrix2, at, reward, theta_out0, theta_out1, theta_out2);
+	input clock;
+	input [1:0] at;
+	input [31:0] reward;
+	input [31:0] matrix0, matrix1, matrix2;
 	parameter one = 32'b0_01111111_00000000000000000000000;
 	parameter zero = 32'b0;
 	parameter alpha = 32'b0_01111110_11100110011001100110011;
 	reg count;
-	reg [31:0] e_sum, e_temp, pi, alpha, minus, deri, product, reward_pro;
+	reg [31:0] e_sum, e_temp, minus0, minus1, minus2, pi0, pi1, pi2, deri0, deri1, deri2, product, reward_pro;
 	reg [31:0] e_out [2:0];
-	output [31:0] theta_out;
+	output [31:0] theta_out0, theta_out1, theta_out2;
 	
-	ALTFP_EXa e0(.clock(clock), .data(matrix[at][0]), .result(e_out[0])); //e^p0
-	ALTFP_EXa e1(.clock(clock), .data(matrix[at][1]), .result(e_out[1])); //e^p1
-	ALTFP_EXa e2(.clock(clock), .data(matrix[at][2]), .result(e_out[2])); //e^p2
+	ALTFP_EXa e0(.clock(clock), .data(matrix0), .result(e_out[0])); //e^p0
+	ALTFP_EXa e1(.clock(clock), .data(matrix1), .result(e_out[1])); //e^p1
+	ALTFP_EXa e2(.clock(clock), .data(matrix2), .result(e_out[2])); //e^p2
 	
 	float_adder f0(.clock(clock), .add_sub(1'b1), .dataa(e_out[0]), .datab(e_out[1]), .result(e_temp)); //e^p0 + e^p1
 	float_adder f1(.clock(clock), .add_sub(1'b1), .dataa(e_out[2]), .datab(e_temp), .result(e_sum)); //e^p0 + e^p1 + e^p2
 	
-	float_divider d0(.clock(clock), .dataa(e_out[ak]), .datab(e_sum), .result(pi)); //pi(ak, ct)
-	float_adder f2(.clock(clock), .add_sub(1'b0), .dataa(minus), .datab(pi), .result(deri)); //-pi(ak, ct) or 1 - pi(ak, ct)
+	float_divider d0(.clock(clock), .dataa(e_out[0]), .datab(e_sum), .result(pi0)); //pi(a0, ct)
+	float_divider d1(.clock(clock), .dataa(e_out[1]), .datab(e_sum), .result(pi1)); //pi(a1, ct)
+	float_divider d2(.clock(clock), .dataa(e_out[2]), .datab(e_sum), .result(pi2)); //pi(a2, ct)
 	
-	float_multi mo(.clock(clock), .dataa(deri), .datab(alpha), .result(product)); //deri * alpha
-	float_multi m1(.clock(clock), .dataa(product), .datab(reward), .result(reward_pro)); //deri * alpha * reward
+	float_adder f2(.clock(clock), .add_sub(1'b0), .dataa(minus0), .datab(pi0), .result(deri0)); //-pi(a0, ct) or 1 - pi(a0, ct)
+	float_adder f3(.clock(clock), .add_sub(1'b0), .dataa(minus1), .datab(pi1), .result(deri1)); //-pi(a1, ct) or 1 - pi(a1, ct)
+	float_adder f4(.clock(clock), .add_sub(1'b0), .dataa(minus2), .datab(pi2), .result(deri2)); //-pi(a2, ct) or 1 - pi(a2, ct)
 	
-	float_adder f3(.clock(clock), .add_sub(1'b1), .dataa(matrix[at][ak]), .datab(reward_pro), .result(theta_out));
+	float_multi mo(.clock(clock), .dataa(reward), .datab(alpha), .result(reward_alpha)); //alpha * reward
+	float_multi m1(.clock(clock), .dataa(reward_alpha), .datab(deri0), .result(product0)); //deri * alpha * reward
+	float_multi m2(.clock(clock), .dataa(reward_alpha), .datab(deri1), .result(product1)); //deri * alpha * reward
+	float_multi m3(.clock(clock), .dataa(reward_alpha), .datab(deri2), .result(product2)); //deri * alpha * reward
 	
-	if (at == ak) begin
-		assign minus = one;
-	end
-	else begin
-		assign minus = zero;
+	float_adder f5(.clock(clock), .add_sub(1'b1), .dataa(matrix0), .datab(product0), .result(theta_out0));
+	float_adder f6(.clock(clock), .add_sub(1'b1), .dataa(matrix1), .datab(product1), .result(theta_out1));
+	float_adder f7(.clock(clock), .add_sub(1'b1), .dataa(matrix2), .datab(product2), .result(theta_out2));
+	
+	always @(*) begin
+		case (at)
+			2'b00: begin
+				minus0 = one;
+				minus1 = zero;
+				minus2 = zero;
+			end
+			2'b01: begin
+				minus0 = zero;
+				minus1 = one;
+				minus2 = zero;
+			end
+			2'b10: begin
+				minus0 = zero;
+				minus1 = zero;
+				minus2 = one;
+			end
+		endcase
 	end
 	
 endmodule
