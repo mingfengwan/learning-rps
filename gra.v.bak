@@ -34,7 +34,7 @@ module gra(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 	screen_display u0 (
 		.CLOCK_50(CLOCK_50),						
 		.reset_n(start),
-		.player(0),
+		//.player(0),
 		.choice(user),
 		.VGA_CLK(VGA_CLK),   						
 		.VGA_HS(VGA_HS),							
@@ -55,7 +55,7 @@ module screen_display
 	(
 		CLOCK_50,						//	On Board 50 MHz
 		reset_n,
-		player,
+		//player,
 		choice,
 		VGA_CLK,   						//	VGA Clock
 		VGA_HS,							//	VGA H_SYNC
@@ -95,18 +95,9 @@ module screen_display
 	
 	
 	reg [2:0] colour;
-	reg [7:0] x_c = 8'b0;
-	reg [6:0] y_c = 7'b0;
-	reg [7:0] x_u = 8'b0;
-	reg [7:0] y_u = 8'b0;
-	reg enable_c = 1'b1;
-	reg enable_u = 1'b1;
-	wire x;
-	wire y;
-	wire writeEn;
-	assign writeEn = player ? enable_c : enable_u;
-	assign x = player? x_c : x_u;
-	assign y = player ? y_c : y_u;
+	reg [7:0] x = 8'b0;
+	reg [6:0] y = 7'b0;
+	reg writeEn = 1'b1;
 
 
 	
@@ -115,33 +106,21 @@ module screen_display
 	begin
 		if(reset_n == 1'b0)
 			begin
-			x_c <= 8'b0;
-			x_u <= 8'b01010000;
-			y_c <= 7'b0;
-			y_u <= 7'b0;
-			enable_c <= 1'b1;
-			enable_u <= 1'b1;
+			x <= 8'b0;
+			y <= 7'b0;
+			writeEn <= 1'b1;
 			end
 
 		else
 		begin
-			if(x_c + 1 > 8'b10100000) begin
-				x_c <= 1'b0;
-				y_c <= y_c + 1'b1;
+			if(x + 1 > 8'b10100000) begin
+				x <= 1'b0;
+				y <= y + 1'b1;
 			end
 			else
-				x_c <= x_c + 1'b1;
-			if (y_c + 1 > 7'b1111000)
-				enable_c <= 1'b0;
-			if(x_u + 1 > 8'b10100000) begin
-				x_u <= 8'b01010000;
-				y_u <= y_u + 1'b1;
-			end
-			else
-				x_u <= x_u + 1'b1;
-			if (y_u + 1 > 7'b1111000)
-				enable_u <= 1'b0;
-
+				x <= x + 1'b1;
+			if (y + 1 > 7'b1111000)
+				writeEn <= 1'b0;
 
 		end	
 	end
@@ -164,18 +143,18 @@ module screen_display
 	
 	
 	//rom module to store scissor.mif
-	new_scissor s0(
+	scissor s0(
 	.address(addr),
 	.clock(CLOCK_50),
 	.q(q_s));
 	
 	//rom module to store paper.mif
-	new_paper p0(
+	paper p0(
 	.address(addr),
 	.clock(CLOCK_50),
 	.q(q_p));
 	//rom module to store rock.mif
-	new_rock r0 (
+	rock r0 (
 	.address(addr),
 	.clock(CLOCK_50),
 	.q(q_r));
@@ -189,10 +168,10 @@ module screen_display
 		else begin
 			case (q)
 				1'b1: begin
-					if (player == 0) //user's choice, background is black
-						colour <= 3'b000;
-					else
-						colour <= 3'b111; //computer's choice, background is white
+					//if (player == 0) //user's choice, background is black
+						//colour <= 3'b000;
+					//else
+					colour <= 3'b111; //computer's choice, background is white
 				end
 				1'b0: begin
 					colour <= 3'b010;
