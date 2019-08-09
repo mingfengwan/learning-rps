@@ -169,30 +169,30 @@ module comparator_32(clock, m0, m1, m2, choice);
 endmodule
 
 module reinforce(clock, reset, start, user_choice, choice, ready);
-	input clock, start;
+	input clock, reset, start;
 	input [1:0] user_choice;
 	reg [6:0] count_comp;
+	reg [31:0] pre_reward = 32'b0;
 	reg [31:0] current_reward;
-	input reset;
-	output reg [1:0] choice;
+	wire [31:0] new_reward;
+	wire [1:0] random_choice;
+	output [1:0] choice;
 	output reg ready = 1'b0;
 	wire [31:0] theta_out [2:0];
-	reg [31:0] matrix[2:0][2:0];
+	reg [31:0] matrix [2:0][2:0];
 	reg [31:0] reward [59:0];
 	reg [1:0] action [59:0];
 	reg [1:0] user [59:0];
 	reg [5:0] game = 6'b0;
-	reg comp = 1'b0;
-	reg [5:0] r_tracker = 6'b0;
 	reg [5:0] t_tracker = 6'b0;
-	parameter random21 = 00111110_01010111_00001010_00111101;
-	parameter random34 = 00111110_10101110_00010100_01111011;
-	parameter random45 = 00111110_11100110_01100110_01100110;
+	parameter random21 = 32'b00111110_01010111_00001010_00111101;
+	parameter random34 = 32'b00111110_10101110_00010100_01111011;
+	parameter random45 = 32'b00111110_11100110_01100110_01100110;
 	
 	parameter one = 32'b0_01111111_00000000000000000000000;
 	parameter zero = 32'b0;
 	parameter negone = 32'b10111111_10000000_00000000_00000000;
-	//TODO: add ready 
+	
 	random r0(.clock(clock), .choice(random_choice));
 	
 	theta t0(.clock(clock), .at(action[t_tracker]), 
@@ -202,10 +202,10 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 	.reward(reward[game - t_tracker]), 
 	.theta_out0(theta_out[0]), .theta_out1(theta_out[1]), .theta_out2(theta_out[2]));
 	
-	comparator_32(matrix[user_choice][0], matrix[user_choice][1], matrix[user_choice][2], choice);
+	comparator_32 c0(clock, matrix[user_choice][0], matrix[user_choice][1], matrix[user_choice][2], choice);
 	
-	float_adder f0(.clock(clock), .add_sub(1'b1), .dataa(reward[game - 6'b1]), 
-	.datab(current_reward), .result(reward[game]));
+	float_adder f0(.clock(clock), .add_sub(1'b1), .dataa(pre_reward), 
+	.datab(current_reward), .result(new_reward));
 	
 	always @(posedge clock, negedge reset) begin
 		if (!reset) begin
@@ -234,18 +234,21 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 		end
 	
 		else if (count_comp == 100) begin
+			matrix[user[t_tracker - 6'b1]][0] <= theta_out[0];
+			matrix[user[t_tracker - 6'b1]][1] <= theta_out[1];
+			matrix[user[t_tracker - 6'b1]][2] <= theta_out[2];
+			
 			if (t_tracker < game) begin
 				t_tracker <= t_tracker + 6'b1;
 				count_comp <= 7'b0;
 			end
 			else begin
 				action[game] <= choice;
-				if (game == 0) begin
-					reward[0] <= current_reward;
-				end
 				user[game] <= user_choice;
 				game <= game + 6'b1;
-				ready = 1'b1;
+				ready <= 1'b1;
+				reward[game] <= new_reward;
+				count_comp <= count_comp + 7'b1;
 			end
 		end
 		
@@ -258,6 +261,13 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 		if (game < 60) begin
 			t_tracker <= 6'b0;
 			count_comp <= 7'b0;
+			ready <= 1'b0;
+		end
+		if (game > 0) begin
+			pre_reward <= reward[game - 6'b1];
+		end
+		else begin
+			pre_reward <= 32'b0;
 		end
 	end
 	
@@ -316,9 +326,10 @@ module theta(clock, matrix0, matrix1, matrix2, at, reward, theta_out0, theta_out
 	parameter one = 32'b0_01111111_00000000000000000000000;
 	parameter zero = 32'b0;
 	parameter alpha = 32'b0_01111110_11100110011001100110011;
-	reg count;
-	reg [31:0] e_sum, e_temp, minus0, minus1, minus2, pi0, pi1, pi2, deri0, deri1, deri2, product, reward_pro;
-	reg [31:0] e_out [2:0];
+	wire [31:0] e_sum, e_temp, pi0, pi1, pi2, deri0, deri1, deri2;
+	reg [31:0] minus0, minus1, minus2;
+	wire [31:0] product0, product1, product2, reward_alpha;
+	wire [31:0] e_out [2:0];
 	output [31:0] theta_out0, theta_out1, theta_out2;
 	
 	ALTFP_EXa e0(.clock(clock), .data(matrix0), .result(e_out[0])); //e^p0
@@ -328,9 +339,9 @@ module theta(clock, matrix0, matrix1, matrix2, at, reward, theta_out0, theta_out
 	float_adder f0(.clock(clock), .add_sub(1'b1), .dataa(e_out[0]), .datab(e_out[1]), .result(e_temp)); //e^p0 + e^p1
 	float_adder f1(.clock(clock), .add_sub(1'b1), .dataa(e_out[2]), .datab(e_temp), .result(e_sum)); //e^p0 + e^p1 + e^p2
 	
-	float_divider d0(.clock(clock), .dataa(e_out[0]), .datab(e_sum), .result(pi0)); //pi(a0, ct)
-	float_divider d1(.clock(clock), .dataa(e_out[1]), .datab(e_sum), .result(pi1)); //pi(a1, ct)
-	float_divider d2(.clock(clock), .dataa(e_out[2]), .datab(e_sum), .result(pi2)); //pi(a2, ct)
+	float_div d0(.clock(clock), .dataa(e_out[0]), .datab(e_sum), .result(pi0)); //pi(a0, ct)
+	float_div d1(.clock(clock), .dataa(e_out[1]), .datab(e_sum), .result(pi1)); //pi(a1, ct)
+	float_div d2(.clock(clock), .dataa(e_out[2]), .datab(e_sum), .result(pi2)); //pi(a2, ct)
 	
 	float_adder f2(.clock(clock), .add_sub(1'b0), .dataa(minus0), .datab(pi0), .result(deri0)); //-pi(a0, ct) or 1 - pi(a0, ct)
 	float_adder f3(.clock(clock), .add_sub(1'b0), .dataa(minus1), .datab(pi1), .result(deri1)); //-pi(a1, ct) or 1 - pi(a1, ct)
