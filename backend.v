@@ -27,7 +27,6 @@ module markov(clock, reset, start, user, choice);
 	input [1:0] user;
 	reg [1:0] previous;
 	reg [3:0] comb;
-	wire [1:0] random_choice;
 	reg [7:0] matrix [8:0][2:0];
 	output [1:0] choice;
 	reg [3:0] count = 4'b0;
@@ -77,7 +76,8 @@ module comparator_matrix(m0, m1, m2, choice);
 	output reg [1:0] choice;
 	
 	random r0(.clock(clock), .choice(random_choice));
-	always @(m0, m1, m2) begin
+	always @(*) begin
+	
 	if (m0 == m1) begin
 		if (m0 < m2) //user pick 10 (paper)
 			choice = 2'b01;
@@ -130,11 +130,11 @@ module comparator_32(clock, m0, m1, m2, choice);
 	
 	always @(*) begin
 	if (aeb) begin //m0 == m1
-		if (blc) //m1 < m2, user pick 10 (paper)
-			choice = 2'b01;
+		if (blc) //m1 < m2
+			choice = 2'b10;
 		
-		else if (agc) begin //m0 > m2, user pick 00 (rock) or 01 (scissor)
-			choice = {random_choice[0], 1'b0};
+		else if (agc) begin //m0 > m2
+			choice = {1'b0, random_choice[0]};
 		end
 		else begin
 			choice = random_choice;
@@ -144,23 +144,23 @@ module comparator_32(clock, m0, m1, m2, choice);
 
 	else begin
 		if (agb) begin //m0 > m1
-			if (bgc) //m1 > m2, user pick 00 (rock)
-				choice = 2'b10;
+			if (bgc) //m1 > m2
+				choice = 2'b00;
 			else begin
-				if (agc) //m0 > m2, user pick 00 (rock)
-					choice = 2'b10;
+				if (agc) //m0 > m2
+					choice = 2'b00;
 				else
-					choice = 2'b01; //user pick 10 (paper)
+					choice = 2'b10; 
 			end
 		end
 		else begin
-			if (agc) //m0 > m2, user pick 01 (scissor)
-				choice = 2'b00;
+			if (agc) //m0 > m2
+				choice = 2'b01;
 			else begin
-				if (bgc) //m1 > m2 user pick 01 (scissor)
-					choice = 2'b00;
-				else //user pick paper (10)
+				if (bgc) //m1 > m2
 					choice = 2'b01;
+				else //pick paper (10)
+					choice = 2'b10;
 			end
 		end
 	end
@@ -173,6 +173,7 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 	input [1:0] user_choice;
 	reg [6:0] count_comp;
 	reg [31:0] pre_reward = 32'b0;
+	reg [1:0] pre_user;
 	reg [31:0] current_reward;
 	wire [31:0] new_reward;
 	wire [1:0] random_choice;
@@ -184,6 +185,7 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 	reg [1:0] action [59:0];
 	reg [1:0] user [59:0];
 	reg [5:0] game = 6'b0;
+	reg [5:0] t_limit = 6'b0;
 	reg [5:0] t_tracker = 6'b0;
 	parameter random21 = 32'b00111110_01010111_00001010_00111101;
 	parameter random34 = 32'b00111110_10101110_00010100_01111011;
@@ -196,10 +198,10 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 	random r0(.clock(clock), .choice(random_choice));
 	
 	theta t0(.clock(clock), .at(action[t_tracker]), 
-	.matrix0(matrix[user[t_tracker - 6'b1]][0]),
-	.matrix1(matrix[user[t_tracker - 6'b1]][1]),
-	.matrix2(matrix[user[t_tracker - 6'b1]][2]),
-	.reward(reward[game - t_tracker]), 
+	.matrix0(matrix[pre_user][0]),
+	.matrix1(matrix[pre_user][1]),
+	.matrix2(matrix[pre_user][2]),
+	.reward(reward[t_limit - t_tracker]), 
 	.theta_out0(theta_out[0]), .theta_out1(theta_out[1]), .theta_out2(theta_out[2]));
 	
 	comparator_32 c0(clock, matrix[user_choice][0], matrix[user_choice][1], matrix[user_choice][2], choice);
@@ -232,13 +234,26 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 				matrix[2][2] <= random34;
 			end
 		end
+		
+		else if (count_comp == 0) begin
+			if (t_tracker == 0) begin
+				pre_user <= random_choice;
+			end
+			else begin
+				pre_user <= user[t_tracker - 6'b1];
+			end
+			count_comp <= count_comp + 7'b1;
+		end
 	
 		else if (count_comp == 100) begin
 			matrix[user[t_tracker - 6'b1]][0] <= theta_out[0];
 			matrix[user[t_tracker - 6'b1]][1] <= theta_out[1];
 			matrix[user[t_tracker - 6'b1]][2] <= theta_out[2];
+		
+			$display("%p", game - t_tracker);
+			$display("%p", reward);
 			
-			if (t_tracker < game) begin
+			if (t_tracker < t_limit) begin
 				t_tracker <= t_tracker + 6'b1;
 				count_comp <= 7'b0;
 			end
@@ -246,6 +261,7 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 				action[game] <= choice;
 				user[game] <= user_choice;
 				game <= game + 6'b1;
+				t_limit <= game;
 				ready <= 1'b1;
 				reward[game] <= new_reward;
 				count_comp <= count_comp + 7'b1;
