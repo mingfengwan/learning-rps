@@ -1,62 +1,14 @@
-module gra(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR, 
-		VGA_CLK,   						//	VGA Clock
-		VGA_HS,							//	VGA H_SYNC
-		VGA_VS,							//	VGA V_SYNC
-		VGA_BLANK_N,						//	VGA BLANK
-		VGA_SYNC_N,						//	VGA SYNC
-		VGA_R,   						//	VGA Red[9:0]
-		VGA_G,	 						//	VGA Green[9:0]
-		VGA_B);
-	input [9:0] SW; // SW[9] is load
-	input [3:0] KEY; // KEY[0] is reset
-	input CLOCK_50;
-	output [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5;
-	output [9:0] LEDR;//LEDR[0] = 1, means player wins this game, LEDR[1] = 1, means computer wins this game. LEDR[2] = 1 means a draw
-
-
-	wire start;
-
-
-	
-	output			VGA_CLK;   				//	VGA Clock
-	output			VGA_HS;					//	VGA H_SYNC
-	output			VGA_VS;					//	VGA V_SYNC
-	output			VGA_BLANK_N;				//	VGA BLANK
-	output			VGA_SYNC_N;				//	VGA SYNC
-	output	[9:0]	VGA_R;   				//	VGA Red[9:0]
-	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
-	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
-	
-	
-	assign user = SW[1:0]; // 00 is rock, 01 is scissor, 10 is paper
-	assign start = KEY[1]; 
-	
-	screen_display u0 (
-		.CLOCK_50(CLOCK_50),						
-		.reset_n(start),
-		.player(0),
-		.choice(user),
-		.VGA_CLK(VGA_CLK),   						
-		.VGA_HS(VGA_HS),							
-		.VGA_VS(VGA_VS),							
-		.VGA_BLANK_N(VGA_BLANK_N),						
-		.VGA_SYNC_N(VGA_SYNC_N),						
-		.VGA_R(VGA_R),   						
-		.VGA_G(VGA_G),	 						
-		.VGA_B(VGA_B)   						
-	);
-		
-	assign LEDR[0] = 1'b1;
-endmodule
-
-
-
-module screen_display	
+module m3
 	(
 		CLOCK_50,						//	On Board 50 MHz
-		reset_n,
-		player,
-		choice,
+		//reset_n,
+		//player,
+		//choice,
+		// Your inputs and outputs here
+		//colour
+      KEY,
+       SW,
+		// The ports below are for the VGA output.  Do not change.
 		VGA_CLK,   						//	VGA Clock
 		VGA_HS,							//	VGA H_SYNC
 		VGA_VS,							//	VGA V_SYNC
@@ -68,13 +20,14 @@ module screen_display
 	);
 
 	input			CLOCK_50;				//	50 MHz
-	//input   [9:0]   SW;
-	//input   [3:0]   KEY;
-	input reset_n;
-	//assign reset_n = KEY[0];
-	//input player; // 0 for user,1 for computer
-	input [1:0] choice; // 00 is rock, 01 is scissor, 10 is paper
-	//assign choice = SW[1:0];
+	input   [9:0]   SW;
+	input   [3:0]   KEY;
+	//input reset_n;
+	//input [2:0] colour
+	wire player;
+	assign player = SW[9]; // 0 for user,1 for computer
+	wire [1:0] choice; // 001 is rock, 010 is scissor, 100 is paper
+	assign choice = SW[1:0];
 
 	// Declare your inputs and outputs here
 	// Do not change the following outputs
@@ -89,29 +42,28 @@ module screen_display
 	
 	
 
-	wire reset_n, enable;
+	wire reset_n;
    wire	q_s, q_r, q_p;
 	reg q;
 	
-	
+	assign reset_n = KEY[0];
 	reg [2:0] colour;
-	reg [7:0] x_c = 8'b0;
-	reg [6:0] y_c = 7'b0;
-	reg [7:0] x_u = 8'b0;
-	reg [7:0] y_u = 8'b0;
-	reg enable_c = 1'b1;
-	reg enable_u = 1'b1;
-	wire x;
-	wire y;
-	wire writeEn;
-	assign writeEn = player ? enable_c : enable_u;
-	assign x = player? x_c : x_u;
+	reg [7:0] x_c;
+	reg [6:0] y_c;
+	reg writeEn_u;
+	reg [7:0] x_u;
+	reg [6:0] y_u;
+	reg writeEn_u;
+	reg [7:0] x;
+	reg [6:0] y;
+	reg writeEn;
+	assign x = player ? x_c : x_u;
 	assign y = player ? y_c : y_u;
 
 
 	
-	always@(posedge CLOCK_50, negedge reset_n)
 
+	always@(posedge CLOCK_50, negedge reset_n)
 	begin
 		if(reset_n == 1'b0)
 			begin
@@ -119,33 +71,49 @@ module screen_display
 			x_u <= 8'b01010000;
 			y_c <= 7'b0;
 			y_u <= 7'b0;
-			enable_c <= 1'b1;
-			enable_u <= 1'b1;
+			writeEn_x <= 1'b1;
+			writeEn_y <= 1'b1;
 			end
 
 		else
 		begin
-			if(x_c + 1 > 8'b10100000) begin
-				x_c <= 1'b0;
-				y_c <= y_c + 1'b1;
-			end
-			else
-				x_c <= x_c + 1'b1;
-			if (y_c + 1 > 7'b1111000)
-				enable_c <= 1'b0;
-			if(x_u + 1 > 8'b10100000) begin
+			//if(x > 8'b01010000 || x == 8'b01010000) begin
+			if(x_u > 8'b10100000 || x_u == 8'b10100000) begin
+				//x <= 8'b0;
 				x_u <= 8'b01010000;
-				y_u <= y_u + 1'b1;
+				if (y_u > 7'b1111000 || y_u == 7'b1111000)
+					writeEn <= 1'b0;
+				else
+					y_u <= y_u + 1'b1;
 			end
 			else
 				x_u <= x_u + 1'b1;
-			if (y_u + 1 > 7'b1111000)
-				enable_u <= 1'b0;
-
-
+			//if (x  < 8'b01010000 && y < 7'b1111000)
+			if (x_u  < 8'b10100000 && y_u < 7'b1111000)
+				writeEn <= 1'b1;
+			else
+				writeEn <= 1'b0;
+				
+			if(x_c > 8'b01010000 || x_c == 8'b01010000) begin
+				//x <= 8'b0;
+				x_c <= 8'b01010000;
+				if (y_c > 7'b1111000 || y_c == 7'b1111000)
+					writeEn <= 1'b0;
+				else
+					y_c <= y_c + 1'b1;
+			end
+			else
+				x_c <= x_c + 1'b1;
+			//if (x  < 8'b01010000 && y < 7'b1111000)
+			if (x_c  < 8'b10100000 && y_c < 7'b1111000)
+				writeEn <= 1'b1;
+			else
+				writeEn <= 1'b0;
 		end	
+		
+			 
+			
 	end
-	
 	always @(*) begin
 		if (choice == 2'b00) // choice is rock
 				q = q_r;
@@ -160,6 +128,7 @@ module screen_display
 	wire [14:0] addr;
 	vga_address_translator t1(x, y, addr);
 	defparam t1.RESOLUTION = "160x120";
+
 
 	
 	
@@ -211,7 +180,6 @@ module screen_display
 			.x(x),
 			.y(y),
 			.plot(writeEn),
-			/* Signals for the DAC to drive the monitor. */
 			.VGA_R(VGA_R),
 			.VGA_G(VGA_G),
 			.VGA_B(VGA_B),
@@ -224,7 +192,9 @@ module screen_display
 		defparam VGA.MONOCHROME = "FALSE";
 		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
 		defparam VGA.BACKGROUND_IMAGE = "black.mif";
-endmodule
+endmodule 
+
+
 
 
 
