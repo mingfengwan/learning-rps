@@ -83,13 +83,8 @@ module gra
 				//x <= 8'b0;
 				x_u <= 8'b01010000;
 				if (y_u > 7'b1111000 || y_u == 7'b1111000)
-<<<<<<< HEAD
 					writeEn_u <= 1'b0;
 				else
-=======
-					writeEn <= 1'be0;
-				els
->>>>>>> f4cfd71745e0146bee5d409c7b634cb85ef4e89b
 					y_u <= y_u + 1'b1;
 			end
 			else
