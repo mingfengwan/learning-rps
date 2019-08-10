@@ -1,4 +1,4 @@
-module m3
+module gra
 	(
 		CLOCK_50,						//	On Board 50 MHz
 		//reset_n,
@@ -53,12 +53,13 @@ module m3
 	reg writeEn_u;
 	reg [7:0] x_u;
 	reg [6:0] y_u;
-	reg writeEn_u;
-	reg [7:0] x;
-	reg [6:0] y;
-	reg writeEn;
+	reg writeEn_c;
+	wire [7:0] x;
+	wire [6:0] y;
+	wire writeEn;
 	assign x = player ? x_c : x_u;
 	assign y = player ? y_c : y_u;
+	assign writeEn = player ? writeEn_c : writeEn_u;
 
 
 	
@@ -71,8 +72,8 @@ module m3
 			x_u <= 8'b01010000;
 			y_c <= 7'b0;
 			y_u <= 7'b0;
-			writeEn_x <= 1'b1;
-			writeEn_y <= 1'b1;
+			writeEn_c <= 1'b1;
+			writeEn_u <= 1'b1;
 			end
 
 		else
@@ -82,7 +83,7 @@ module m3
 				//x <= 8'b0;
 				x_u <= 8'b01010000;
 				if (y_u > 7'b1111000 || y_u == 7'b1111000)
-					writeEn <= 1'b0;
+					writeEn_u <= 1'b0;
 				else
 					y_u <= y_u + 1'b1;
 			end
@@ -90,15 +91,15 @@ module m3
 				x_u <= x_u + 1'b1;
 			//if (x  < 8'b01010000 && y < 7'b1111000)
 			if (x_u  < 8'b10100000 && y_u < 7'b1111000)
-				writeEn <= 1'b1;
+				writeEn_u <= 1'b1;
 			else
-				writeEn <= 1'b0;
+				writeEn_u <= 1'b0;
 				
 			if(x_c > 8'b01010000 || x_c == 8'b01010000) begin
 				//x <= 8'b0;
 				x_c <= 8'b01010000;
 				if (y_c > 7'b1111000 || y_c == 7'b1111000)
-					writeEn <= 1'b0;
+					writeEn_c <= 1'b0;
 				else
 					y_c <= y_c + 1'b1;
 			end
@@ -106,9 +107,9 @@ module m3
 				x_c <= x_c + 1'b1;
 			//if (x  < 8'b01010000 && y < 7'b1111000)
 			if (x_c  < 8'b10100000 && y_c < 7'b1111000)
-				writeEn <= 1'b1;
+				writeEn_c <= 1'b1;
 			else
-				writeEn <= 1'b0;
+				writeEn_c <= 1'b0;
 		end	
 		
 			 
