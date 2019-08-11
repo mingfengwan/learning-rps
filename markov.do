@@ -25,13 +25,7 @@ run 20ns
 
 force {start} 0, 1 {5 ns} -repeat 10
 force {user} 00 
-run 20ns
+run 200ns
 
 force {user} 01
-run 20ns
-
-force {user} 00
-run 20ns
-
-force {user} 01
-run 100ns
+run 200ns

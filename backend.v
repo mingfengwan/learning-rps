@@ -19,6 +19,7 @@ module markov(clock, reset, start, user, choice);
 	reg [7:0] matrix [8:0][2:0];
 	output [1:0] choice;
 	reg [3:0] count = 4'b0;
+	reg [7:0] temp;
 		
 	comparator_matrix c0(matrix[comb][0], matrix[comb][1], matrix[comb][2], choice);
 	
@@ -36,19 +37,22 @@ module markov(clock, reset, start, user, choice);
 		endcase
 	end
 	
-	always @(posedge clock, negedge reset, negedge start) begin
+	always @(start) begin
+		if (!start) begin
+			if (!(^previous === 1'bX)) begin
+				temp <= matrix[previous][user] + 8'b1;
+			end
+			$display("%p", matrix);
+		end
+		else begin
+			previous <= comb;
+		end
+	end
+	
+	always @(posedge clock, negedge reset) begin
 		if (!reset) begin
 			count <= 4'b0;
 		end
-		
-		else if (!start) begin
-			if (!(^previous === 1'bX)) begin
-				matrix[previous][user] <= matrix[previous][user] + 8'b1;
-			end
-			previous <= comb;
-			//$display("%p", matrix);
-		end
-		
 		else if (count < 9) begin
 			count <= count + 1'b1;
 			matrix[count][0] <= 8'b0;
@@ -56,6 +60,9 @@ module markov(clock, reset, start, user, choice);
 			matrix[count][2] <= 8'b0;
 		end
 		
+		else if (!(^previous === 1'bX)) begin
+			matrix[previous][user] <= temp;
+		end
 	end
 endmodule
 
