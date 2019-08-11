@@ -40,7 +40,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 	assign start = KEY[1]; 
 	assign reset = KEY[0];
 	
-	reg go;
+	//reg go;
 	
 	
 	parameter ROCK = 0;
@@ -58,6 +58,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 	//assign reset_u = KEY[2];
 	//assign reset_c = KEY[3];
 	wire ready;
+	assign LEDR[9] = ready;
 	
 	markov mar(.clock(CLOCK_50), .reset(reset), .start(start), .user(user), .choice(com_m));
 	reinforce re(.clock(CLOCK_50), .reset(reset), .start(start), .user_choice(user), .choice(com_re), .ready(ready));
@@ -102,8 +103,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 		.VGA_SYNC_N(VGA_SYNC_N),						
 		.VGA_R(VGA_R),   						
 		.VGA_G(VGA_G),	 						
-		.VGA_B(VGA_B)   						
-	);
+		.VGA_B(VGA_B)   						);
 	
 
 	always @(negedge start, negedge reset)
@@ -115,7 +115,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 		    uwin <= 0;
 		    cwin <= 0;
 			 com_loaded <= 2'b0;
-			 go <= 0;
+			 //go <= 0;
 		end
 		else if (start == 0)begin
 			//for ready (reinforce)
@@ -132,7 +132,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 			end
 		
 			2'b01: begin equ <= 0; //com is scissor
-					  go <= 1'b0;
+					  //go <= 1'b0;
 				     uwin <= 1;
 				     cwin <= 0;
 				     user_score <= user_score + 1'b1;
@@ -189,8 +189,8 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 				     com_score <= com_score + 1'b1; 
 					  //choice_c <= 1;
 			end
-			2'b10: begin equ <= 0; //com is paper
-				     uwin <= 1;
+			2'b10: begin equ <= 1; //com is paper
+				     uwin <= 0;
 				     cwin <= 0;
 					  //choice_c <= 2;
 				     
