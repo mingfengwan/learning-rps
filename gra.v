@@ -16,7 +16,8 @@ module m3
 		VGA_SYNC_N,						//	VGA SYNC
 		VGA_R,   						//	VGA Red[9:0]
 		VGA_G,	 						//	VGA Green[9:0]
-		VGA_B   						//	VGA Blue[9:0]
+		VGA_B,   						//	VGA Blue[9:0]
+		HEX0, HEX1, LEDR
 	);
 
 	input			CLOCK_50;				//	50 MHz
@@ -48,6 +49,8 @@ module m3
 	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
 	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
 	
+	output [6:0] HEX0, HEX1;
+	output [9:0] LEDR;
 	
 
 
@@ -63,14 +66,29 @@ module m3
 	reg [7:0] x_u;
 	reg [6:0] y_u;
 	reg En_u;
-	reg [7:0] x;
-	reg [6:0] y;
+	wire [7:0] x;
+	wire [6:0] y;
 	wire writeEn;
-	assign writeEn = En_c || En_u; 
-	//assign x = player ? x_c : x_u;
-	//assign y = player ? y_c : y_u;
-	//assign writeEn = player ? writeEn_c : writeEn_u;
+	//assign writeEn = (En_c || En_u); 
+	assign x = player ? x_c : x_u;
+	assign y = player ? y_c : y_u;
+	assign writeEn = player ? writeEn_c : writeEn_u;
+	
 	reg [1:0] curr_draw;
+	assign LEDR[0] = writeEn;
+	assign LEDR[1] = En_c;
+	assign LEDR[2] = En_u;
+	
+	hex_decoder h3(
+	   .hex_num({2'b00, choice_u}),
+	   .seg(HEX0) 
+			);
+
+	//computer's score
+	hex_decoder h4(
+	   .hex_num({2'b00, choice_c}),
+	   .seg(HEX1) 
+			);
 
 	
 
@@ -85,8 +103,8 @@ module m3
 			En_c <= 1'b1;
 			En_u <= 1'b0;
 			curr_draw <= choice_c;
-			x <= x_c;
-			y <= y_c;
+			//x <= x_c;
+			//y <= y_c;
 			end
 
 		else
@@ -94,11 +112,13 @@ module m3
 			if(x_c > 8'b01010000 || x_c == 8'b01010000) begin
 				x_c <= 8'b0;
 				if (y_c > 7'b1111000 || y_c == 7'b1111000) begin
+					x_c <= 8'b01010000;
+					y_c <= 7'b1111000;
 					En_c <= 1'b0;
 					En_u <= 1'b1;
 					curr_draw <= choice_u;
-					x <= x_u;
-					y <= y_u;
+					//x <= x_u;
+					//y <= y_u;
 				end
 				
 				else
@@ -112,6 +132,8 @@ module m3
 				if(x_u > 8'b10100000 || x_u == 8'b10100000) begin
 						x_u <= 8'b01010000;
 						if (y_u > 7'b1111000 || y_u == 7'b1111000)
+							x_u <= 8'b10100000;
+							y_c <= 7'b1111000;
 							En_u <= 1'b0;
 						else
 							y_u <= y_u + 1'b1;
@@ -168,7 +190,7 @@ module m3
 		else begin
 			case (q)
 				1'b1: begin
-					if (En_u == 1) //user's choice, background is black
+					if (En_u == 1'b1) //user's choice, background is black
 						colour <= 3'b000;
 					else
 						colour <= 3'b111; //computer's choice, background is white
@@ -243,7 +265,31 @@ module image_translator(x, y, mem_address);
 endmodule
 
 
-
+module hex_decoder(hex_num, seg);
+    input [3:0] hex_num;
+    output reg [6:0] seg;
+   
+    always @(*)
+        case (hex_num)
+            4'h0: seg = 7'b100_0000;
+            4'h1: seg = 7'b111_1001;
+            4'h2: seg = 7'b010_0100;
+            4'h3: seg = 7'b011_0000;
+            4'h4: seg = 7'b001_1001;
+            4'h5: seg = 7'b001_0010;
+            4'h6: seg = 7'b000_0010;
+            4'h7: seg = 7'b111_1000;
+            4'h8: seg = 7'b000_0000;
+            4'h9: seg = 7'b001_1000;
+            4'hA: seg = 7'b000_1000;
+            4'hB: seg = 7'b000_0011;
+            4'hC: seg = 7'b100_0110;
+            4'hD: seg = 7'b010_0001;
+            4'hE: seg = 7'b000_0110;
+            4'hF: seg = 7'b000_1110;   
+            default: seg = 7'h7f;
+        endcase
+endmodule
 
 
 
