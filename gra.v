@@ -48,7 +48,7 @@ module gra
 	
 	assign reset_n = KEY[0];
 	reg [2:0] colour;
-	/*
+
 	reg [7:0] x_c;
 	reg [6:0] y_c;
 	reg writeEn_u;
@@ -84,27 +84,28 @@ module gra
 
 		else
 		begin
-			if(x > 8'b01010000 || x == 8'b01010000) begin
-			//if(x_u > 8'b10100000 || x_u == 8'b10100000) begin
-				x <= 8'b0;
-				//x_u <= 8'b01010000;
-				if (y > 7'b1111000 || y == 7'b1111000)
-					writeEn <= 1'b0;
+
+			if(x_u > 8'b10100000 || x_u == 8'b10100000) begin
+				x_u <= 8'b01010000;
+				if (y_u > 7'b1111000 || y_u == 7'b1111000)
+					writeEn_u <= 1'b0;
+
 				else
 					y <= y + 1'b1;
 			end
 			else
-				x <= x + 1'b1;
-			if (x  < 8'b01010000 && y < 7'b1111000)
-			//if (x_u  < 8'b10100000 && y_u < 7'b1111000)
-				//writeEn_u <= 1'b1;
-				writeEn <= 1'b1;
+
+				x_u <= x_u + 1'b1;
+			if (x_u  < 8'b10100000 && y_u < 7'b1111000)
+				writeEn_u <= 1'b1;
+
 			else
 				writeEn <= 1'b0;
 				
-			/*if(x_c > 8'b01010000 || x_c == 8'b01010000) begin
-				//x <= 8'b0;
-				x_c <= 8'b01010000;
+
+				
+			if(x_c > 8'b01010000 || x_c == 8'b01010000) begin
+				x_c <= 8'b0;
 				if (y_c > 7'b1111000 || y_c == 7'b1111000)
 					writeEn_c <= 1'b0;
 				else
@@ -112,12 +113,11 @@ module gra
 			end
 			else
 				x_c <= x_c + 1'b1;
-			//if (x  < 8'b01010000 && y < 7'b1111000)
-			if (x_c  < 8'b10100000 && y_c < 7'b1111000)
+			if (x_c  < 8'b01010000 && y_c < 7'b1111000)
 				writeEn_c <= 1'b1;
 			else
 				writeEn_c <= 1'b0;
-				*/
+				
 		end 	
 		
 			 
