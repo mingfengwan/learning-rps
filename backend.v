@@ -247,11 +247,13 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 		end
 		
 		else if (t_tracker == game) begin
-			action[game] <= choice;
-			user[game] <= user_choice;
-			ready <= 1'b1;
-			reward[game] <= new_reward;
-			count_comp <= count_comp + 7'b1;
+			if (!ready) begin
+				action[game] <= choice;
+				user[game] <= user_choice;
+				ready <= 1'b1;
+				reward[game] <= new_reward;
+				count_comp <= count_comp + 7'b1;
+			end
 		end
 		
 		else if (count_comp == 0) begin

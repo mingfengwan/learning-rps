@@ -59,6 +59,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 	//assign reset_c = KEY[3];
 	wire ready;
 	assign LEDR[9] = ready;
+	assign LEDR[7:6] = com_re[1:0];
 	
 	markov mar(.clock(CLOCK_50), .reset(reset), .start(start), .user(user), .choice(com_m));
 	reinforce re(.clock(CLOCK_50), .reset(reset), .start(start), .user_choice(user), .choice(com_re), .ready(ready));
