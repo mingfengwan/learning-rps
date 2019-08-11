@@ -48,7 +48,7 @@ module gra
 	
 	assign reset_n = KEY[0];
 	reg [2:0] colour;
-
+	
 	reg [7:0] x_c;
 	reg [6:0] y_c;
 	reg writeEn_u;
@@ -60,10 +60,8 @@ module gra
 	wire writeEn;
 	assign x = player ? x_c : x_u;
 	assign y = player ? y_c : y_u;
-	assign writeEn = player ? writeEn_c : writeEn_u;*/
-	reg [7:0] x;
-	reg [6:0] y;
-	reg writeEn;
+	assign writeEn = player ? writeEn_c : writeEn_u;
+
 
 	
 
@@ -71,38 +69,30 @@ module gra
 	begin
 		if(reset_n == 1'b0)
 			begin
-			/*x_c <= 8'b0;
+			x_c <= 8'b0;
 			x_u <= 8'b01010000;
 			y_c <= 7'b0;
 			y_u <= 7'b0;
 			writeEn_c <= 1'b1;
-			writeEn_u <= 1'b1;*/
-			x <= 7'b0;
-			y <= 7'b0;
-			writeEn <= 1'b1;
+			writeEn_u <= 1'b1;
 			end
 
 		else
 		begin
-
 			if(x_u > 8'b10100000 || x_u == 8'b10100000) begin
 				x_u <= 8'b01010000;
 				if (y_u > 7'b1111000 || y_u == 7'b1111000)
 					writeEn_u <= 1'b0;
-
 				else
-					y <= y + 1'b1;
+					y_u <= y_u + 1'b1;
 			end
 			else
-
 				x_u <= x_u + 1'b1;
 			if (x_u  < 8'b10100000 && y_u < 7'b1111000)
 				writeEn_u <= 1'b1;
-
 			else
-				writeEn <= 1'b0;
+				writeEn_u <= 1'b0;
 				
-
 				
 			if(x_c > 8'b01010000 || x_c == 8'b01010000) begin
 				x_c <= 8'b0;
@@ -117,8 +107,7 @@ module gra
 				writeEn_c <= 1'b1;
 			else
 				writeEn_c <= 1'b0;
-				
-		end 	
+		end	
 		
 			 
 			
