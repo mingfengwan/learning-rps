@@ -78,7 +78,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 	 screen_display user_draw (
 		.CLOCK_50(CLOCK_50),						
 		.reset_n(start),
-		//.player(0),
+		.player(0),
 		.choice(user),
 		.VGA_CLK(VGA_CLK),   						
 		.VGA_HS(VGA_HS),							
@@ -92,7 +92,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 	
 	screen_display computer_draw(
 		.CLOCK_50(CLOCK_50),						
-		.reset_n(reset_c),
+		.reset_n(start),
 		.player(1),
 		.choice(com_loaded),
 		.VGA_CLK(VGA_HS),   						
@@ -119,7 +119,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 		end
 		else if (start == 0)begin
 			//for ready (reinforce)
-			if ((SW[9:8] == 2'b10 && ready == 1'b1) || (SW[9:8] == 2'b00) || (SW[9:8] == 2'b01))
+			if ((SW[9:8] == 2'b10 && ready == 1'b1) || (SW[9:8] == 2'b00) || (SW[9:8] == 2'b01)) begin
 				com_loaded <= com;
 				
 		   if (user == 2'b0) begin //user is rock
@@ -169,6 +169,8 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 					  //choice_c <= 2;
 			end
 			endcase
+			
+			end
 			end
 
 		   else if (user == 2'b10) begin //user is paper
@@ -280,13 +282,14 @@ endmodule
 
 
 
-module screen_display	
+module screen_display
 	(
 		CLOCK_50,						//	On Board 50 MHz
 		reset_n,
-		//player,
+		player,
 		choice,
 		// Your inputs and outputs here
+		//colour
       //KEY,
       //SW,
 		// The ports below are for the VGA output.  Do not change.
@@ -304,8 +307,9 @@ module screen_display
 	//input   [9:0]   SW;
 	//input   [3:0]   KEY;
 	input reset_n;
-	//assign reset_n = KEY[0];
-	//input player; // 0 for user,1 for computer
+	//input [2:0] colour
+	input player;
+	//assign player = SW[9]; // 0 for user,1 for computer
 	input [1:0] choice; // 00 is rock, 01 is scissor, 10 is paper
 	//assign choice = SW[1:0];
 
@@ -322,44 +326,77 @@ module screen_display
 	
 	
 
-	wire reset_n, enable;
+	//wire reset_n;
+	//assign reset_n = KEY[0];
    wire	q_s, q_r, q_p;
 	reg q;
 	
 	
 	reg [2:0] colour;
-	reg [7:0] x = 8'b0;
-	reg [6:0] y = 7'b0;
-	reg writeEn = 1'b1;
+	
+	reg [7:0] x_c;
+	reg [6:0] y_c;
+	reg writeEn_u;
+	reg [7:0] x_u;
+	reg [6:0] y_u;
+	reg writeEn_c;
+	wire [7:0] x;
+	wire [6:0] y;
+	wire writeEn;
+	assign x = player ? x_c : x_u;
+	assign y = player ? y_c : y_u;
+	assign writeEn = player ? writeEn_c : writeEn_u;
 
 
 	
 
-	//always@(posedge CLOCK_50, negedge reset_n)
 	always@(posedge CLOCK_50, negedge reset_n)
-
 	begin
 		if(reset_n == 1'b0)
 			begin
-			x <= 8'b0;
-			y <= 7'b0;
-			writeEn <= 1'b1;
+			x_c <= 8'b0;
+			x_u <= 8'b01010000;
+			y_c <= 7'b0;
+			y_u <= 7'b0;
+			writeEn_c <= 1'b1;
+			writeEn_u <= 1'b1;
 			end
 
 		else
 		begin
-			if(x + 1 > 8'b10100000) begin
-				x <= 1'b0;
-				y <= y + 1'b1;
+			if(x_u > 8'b10100000 || x_u == 8'b10100000) begin
+				x_u <= 8'b01010000;
+				if (y_u > 7'b1111000 || y_u == 7'b1111000)
+					writeEn_u <= 1'b0;
+				else
+					y_u <= y_u + 1'b1;
 			end
 			else
-				x <= x + 1'b1;
-			if (y + 1 > 7'b1111000)
-				writeEn <= 1'b0;
-
+				x_u <= x_u + 1'b1;
+			if (x_u  < 8'b10100000 && y_u < 7'b1111000)
+				writeEn_u <= 1'b1;
+			else
+				writeEn_u <= 1'b0;
+				
+				
+			if(x_c > 8'b01010000 || x_c == 8'b01010000) begin
+				x_c <= 8'b0;
+				if (y_c > 7'b1111000 || y_c == 7'b1111000)
+					writeEn_c <= 1'b0;
+				else
+					y_c <= y_c + 1'b1;
+			end
+			else
+				x_c <= x_c + 1'b1;
+			if (x_c  < 8'b01010000 && y_c < 7'b1111000)
+				writeEn_c <= 1'b1;
+			else
+				writeEn_c <= 1'b0;
 		end	
+		
+			 
+			
 	end
-	
 	always @(*) begin
 		if (choice == 2'b00) // choice is rock
 				q = q_r;
@@ -372,31 +409,25 @@ module screen_display
 
 	
 	wire [14:0] addr;
-	vga_address_translator t1(x, y, addr);
+	image_translator t1(x, y, addr);
 	defparam t1.RESOLUTION = "160x120";
 
-	wire q_raw;
-	//rom module to store mif
-	/*pic p_0(      
-	.address(addr),
-	.clock(VGA_CLK),
-	.q(q_r));
-	*/
+
 	
 	
 	//rom module to store scissor.mif
-	scissor s0(
+	new_scissor s0(
 	.address(addr),
 	.clock(CLOCK_50),
 	.q(q_s));
 	
 	//rom module to store paper.mif
-	paper p0(
+	new_paper p0(
 	.address(addr),
 	.clock(CLOCK_50),
 	.q(q_p));
 	//rom module to store rock.mif
-	rock r0 (
+	new_rock r0 (
 	.address(addr),
 	.clock(CLOCK_50),
 	.q(q_r));
@@ -410,10 +441,10 @@ module screen_display
 		else begin
 			case (q)
 				1'b1: begin
-					//if (player == 0) //user's choice, background is black
-						//colour <= 3'b000;
-					//else
-					colour <= 3'b111; //computer's choice, background is white
+					if (player == 0) //user's choice, background is black
+						colour <= 3'b000;
+					else
+						colour <= 3'b111; //computer's choice, background is white
 				end
 				1'b0: begin
 					colour <= 3'b010;
@@ -432,7 +463,6 @@ module screen_display
 			.x(x),
 			.y(y),
 			.plot(writeEn),
-			/* Signals for the DAC to drive the monitor. */
 			.VGA_R(VGA_R),
 			.VGA_G(VGA_G),
 			.VGA_B(VGA_B),
@@ -445,7 +475,47 @@ module screen_display
 		defparam VGA.MONOCHROME = "FALSE";
 		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
 		defparam VGA.BACKGROUND_IMAGE = "black.mif";
+endmodule 
+
+
+/* This module converts a user specified coordinates into a memory address.
+ * The output of the module depends on the resolution set by the user.
+ */
+module image_translator(x, y, mem_address);
+
+	parameter RESOLUTION = "320x240";
+	/* Set this parameter to "160x120" or "320x240". It will cause the VGA adapter to draw each dot on
+	 * the screen by using a block of 4x4 pixels ("160x120" resolution) or 2x2 pixels ("320x240" resolution).
+	 * It effectively reduces the screen resolution to an integer fraction of 640x480. It was necessary
+	 * to reduce the resolution for the Video Memory to fit within the on-chip memory limits.
+	 */
+
+	input [((RESOLUTION == "320x240") ? (8) : (7)):0] x; 
+	input [((RESOLUTION == "320x240") ? (7) : (6)):0] y;	
+	output reg [((RESOLUTION == "320x240") ? (16) : (14)):0] mem_address;
+	
+	/* The basic formula is address = y*WIDTH + x;
+	 * For 320x240 resolution we can write 320 as (256 + 64). Memory address becomes
+	 * (y*256) + (y*64) + x;
+	 * This simplifies multiplication a simple shift and add operation.
+	 * A leading 0 bit is added to each operand to ensure that they are treated as unsigned
+	 * inputs. By default the use a '+' operator will generate a signed adder.
+	 * Similarly, for 160x120 resolution we write 160 as 128+32.
+	 */
+	wire [16:0] res_320x240 = ({1'b0, y, 8'd0} + {1'b0, y, 6'd0} + {1'b0, x});
+	//wire [15:0] res_160x120 = ({1'b0, y, 7'd0} + {1'b0, y, 5'd0} + {1'b0, x});
+	wire [15:0] res_160x120 = ({2'b0, y, 6'd0} + {2'b0, y, 4'd0} + {1'b0, x});
+	
+	always @(*)
+	begin
+		if (RESOLUTION == "320x240")
+			mem_address = res_320x240;
+		else
+			mem_address = res_160x120[14:0];
+	end
 endmodule
+
+
 
 
 
