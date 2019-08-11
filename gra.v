@@ -63,8 +63,8 @@ module m3
 	reg [7:0] x_u;
 	reg [6:0] y_u;
 	reg En_u;
-	wire [7:0] x;
-	wire [6:0] y;
+	reg [7:0] x;
+	reg [6:0] y;
 	wire writeEn;
 	assign writeEn = En_c || En_u; 
 	//assign x = player ? x_c : x_u;
@@ -85,6 +85,8 @@ module m3
 			En_c <= 1'b1;
 			En_u <= 1'b0;
 			curr_draw <= choice_c;
+			x <= x_c;
+			y <= y_c;
 			end
 
 		else
@@ -95,35 +97,28 @@ module m3
 					En_c <= 1'b0;
 					En_u <= 1'b1;
 					curr_draw <= choice_u;
-					if(x_u > 8'b10100000 || x_u == 8'b10100000) begin
+					x <= x_u;
+					y <= y_u;
+				end
+				
+				else
+					y_c <= y_c + 1'b1;
+			end
+			else 
+				x_c <= x_c + 1'b1;
+			
+	
+			if (En_u == 1'b'1) begin
+				if(x_u > 8'b10100000 || x_u == 8'b10100000) begin
 						x_u <= 8'b01010000;
 						if (y_u > 7'b1111000 || y_u == 7'b1111000)
 							En_u <= 1'b0;
 						else
 							y_u <= y_u + 1'b1;
-					end
-					else
-						x_u <= x_u + 1'b1;
-					if (x_u  < 8'b10100000 && y_u < 7'b1111000)
-						En_u <= 1'b1;
-					else
-						En_u <= 1'b0;
 				end
-				else
-					y_c <= y_c + 1'b1;
-				
 			end
 			else
-				x_c <= x_c + 1'b1;
-			if (x_c  < 8'b01010000 && y_c < 7'b1111000)
-				En_c <= 1'b1;
-			else
-				En_c <= 1'b0;
-			
-			
-
-				
-
+				x_u <= x_u + 1'b1;
 		end	
 		
 			 
