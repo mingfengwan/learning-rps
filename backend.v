@@ -1,14 +1,3 @@
-module backend(SW, KEY, CLOCK_50, LEDR, HEX0, HEX1);
-    input [9:0] SW;
-    input [3:0] KEY;
-    input CLOCK_50;
-    output [9:0] LEDR;
-    output [6:0] HEX0, HEX1;
-	 
-	 markov(.clock(CLOCK_50), .reset(KEY[0]), .start(KEY[1]), .user(SW[1:0]), .choice(LEDR[1:0]));
-
-endmodule
-
 module random(
 	input clock,
 	output reg [1:0] choice = 2'b0
@@ -185,7 +174,6 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 	reg [1:0] action [59:0];
 	reg [1:0] user [59:0];
 	reg [5:0] game = 6'b0;
-	reg [5:0] t_limit = 6'b0;
 	reg [5:0] t_tracker = 6'b0;
 	parameter random21 = 32'b00111110_01010111_00001010_00111101;
 	parameter random34 = 32'b00111110_10101110_00010100_01111011;
@@ -201,7 +189,7 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 	.matrix0(matrix[pre_user][0]),
 	.matrix1(matrix[pre_user][1]),
 	.matrix2(matrix[pre_user][2]),
-	.reward(reward[t_limit - t_tracker]), 
+	.reward(reward[game - t_tracker - 6'b1]), 
 	.theta_out0(theta_out[0]), .theta_out1(theta_out[1]), .theta_out2(theta_out[2]));
 	
 	comparator_32 c0(clock, matrix[user_choice][0], matrix[user_choice][1], matrix[user_choice][2], choice);
@@ -209,7 +197,7 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 	float_adder f0(.clock(clock), .add_sub(1'b1), .dataa(pre_reward), 
 	.datab(current_reward), .result(new_reward));
 	
-	always @(posedge clock, negedge reset) begin
+	always @(posedge clock, negedge reset, negedge start) begin
 		if (!reset) begin
 			if (random_choice == 2'b1) begin
 				matrix[0][0] <= random21;
@@ -235,6 +223,30 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 			end
 		end
 		
+		else if (!start) begin
+			if (ready) begin
+				if (game < 60) begin
+					t_tracker <= 6'b0;
+					count_comp <= 7'b0;
+					ready <= 1'b0;
+				end
+				if (game > 0) begin
+					pre_reward <= reward[game - 6'b1];
+				end
+				else begin
+					pre_reward <= 32'b0;
+				end
+			end
+		end
+		
+		else if (t_tracker == game) begin
+			action[game] <= choice;
+			user[game] <= user_choice;
+			ready <= 1'b1;
+			reward[game] <= new_reward;
+			count_comp <= count_comp + 7'b1;
+		end
+		
 		else if (count_comp == 0) begin
 			if (t_tracker == 0) begin
 				pre_user <= random_choice;
@@ -246,26 +258,12 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 		end
 	
 		else if (count_comp == 100) begin
-			matrix[user[t_tracker - 6'b1]][0] <= theta_out[0];
-			matrix[user[t_tracker - 6'b1]][1] <= theta_out[1];
-			matrix[user[t_tracker - 6'b1]][2] <= theta_out[2];
+			matrix[pre_user][0] <= theta_out[0];
+			matrix[pre_user][1] <= theta_out[1];
+			matrix[pre_user][2] <= theta_out[2];
 		
-			$display("%p", game - t_tracker);
-			$display("%p", reward);
-			
-			if (t_tracker < t_limit) begin
-				t_tracker <= t_tracker + 6'b1;
-				count_comp <= 7'b0;
-			end
-			else begin
-				action[game] <= choice;
-				user[game] <= user_choice;
-				game <= game + 6'b1;
-				t_limit <= game;
-				ready <= 1'b1;
-				reward[game] <= new_reward;
-				count_comp <= count_comp + 7'b1;
-			end
+			t_tracker <= t_tracker + 6'b1;
+			count_comp <= 7'b0;
 		end
 		
 		else if (count_comp < 100) begin
@@ -273,17 +271,15 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 		end
 	end
 	
-	always @(negedge start) begin
-		if (game < 60) begin
-			t_tracker <= 6'b0;
-			count_comp <= 7'b0;
-			ready <= 1'b0;
+	always @(negedge start, negedge reset) begin
+		if (!start) begin
+			if (ready) begin
+				game <= game + 6'b1;
+			end
 		end
-		if (game > 0) begin
-			pre_reward <= reward[game - 6'b1];
-		end
-		else begin
-			pre_reward <= 32'b0;
+		
+		if (!reset) begin
+			game <= 6'b0;
 		end
 	end
 	

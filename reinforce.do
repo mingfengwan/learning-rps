@@ -41,3 +41,9 @@ run 10ns
 
 force {start} 1
 run 600ns
+
+force {start} 0
+run 10ns
+
+force {start} 1
+run 800ns
