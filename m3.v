@@ -75,7 +75,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 	default: com = com_ra;
 	endcase
 	
-	 screen_display user_draw (
+	 /*screen_display user_draw (
 		.CLOCK_50(CLOCK_50),						
 		.reset_n(start),
 		.player(0),
@@ -89,12 +89,12 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 		.VGA_G(VGA_G),	 						
 		.VGA_B(VGA_B)   						
 	);
+	*/
 	
 	screen_display computer_draw(
 		.CLOCK_50(CLOCK_50),						
 		.reset_n(start),
-		.player(1),
-		.choice(com_loaded),
+		.choice({com_loaded, user}),
 		.VGA_CLK(VGA_CLK),   						
 		.VGA_HS(VGA_HS),							
 		.VGA_VS(VGA_VS),							
@@ -286,7 +286,7 @@ module screen_display
 	(
 		CLOCK_50,						//	On Board 50 MHz
 		reset_n,
-		player,
+		//player,
 		choice,
 		// Your inputs and outputs here
 		//colour
@@ -308,10 +308,13 @@ module screen_display
 	//input   [3:0]   KEY;
 	input reset_n;
 	//input [2:0] colour
-	input player;
+	//input player;
 	//assign player = SW[9]; // 0 for user,1 for computer
-	input [1:0] choice; // 00 is rock, 01 is scissor, 10 is paper
+	input [3:0] choice; // 00 is rock, 01 is scissor, 10 is paper; 3-2 is computer,1-0 is user 
 	//assign choice = SW[1:0];
+	wire [1:0] choice_c, choice_u;
+	assign choice_c = choice[3:2];
+	assign choice_u = choice[1:0];
 
 	// Declare your inputs and outputs here
 	// Do not change the following outputs
@@ -336,17 +339,18 @@ module screen_display
 	
 	reg [7:0] x_c;
 	reg [6:0] y_c;
-	reg writeEn_u;
+	reg En_c;
 	reg [7:0] x_u;
 	reg [6:0] y_u;
-	reg writeEn_c;
+	reg En_u;
 	wire [7:0] x;
 	wire [6:0] y;
 	wire writeEn;
-	assign x = player ? x_c : x_u;
-	assign y = player ? y_c : y_u;
-	assign writeEn = player ? writeEn_c : writeEn_u;
-
+	assign writeEn = En_c || En_u; 
+	//assign x = player ? x_c : x_u;
+	//assign y = player ? y_c : y_u;
+	//assign writeEn = player ? writeEn_c : writeEn_u;
+	reg [1:0] curr_draw;
 
 	
 
@@ -358,49 +362,57 @@ module screen_display
 			x_u <= 8'b01010000;
 			y_c <= 7'b0;
 			y_u <= 7'b0;
-			writeEn_c <= 1'b1;
-			writeEn_u <= 1'b1;
+			En_c <= 1'b1;
+			En_u <= 1'b0;
+			curr_draw <= choice_c;
 			end
 
 		else
 		begin
-			if(x_u > 8'b10100000 || x_u == 8'b10100000) begin
-				x_u <= 8'b01010000;
-				if (y_u > 7'b1111000 || y_u == 7'b1111000)
-					writeEn_u <= 1'b0;
-				else
-					y_u <= y_u + 1'b1;
-			end
-			else
-				x_u <= x_u + 1'b1;
-			if (x_u  < 8'b10100000 && y_u < 7'b1111000)
-				writeEn_u <= 1'b1;
-			else
-				writeEn_u <= 1'b0;
-				
-				
 			if(x_c > 8'b01010000 || x_c == 8'b01010000) begin
 				x_c <= 8'b0;
-				if (y_c > 7'b1111000 || y_c == 7'b1111000)
-					writeEn_c <= 1'b0;
+				if (y_c > 7'b1111000 || y_c == 7'b1111000) begin
+					En_c <= 1'b0;
+					En_u <= 1'b1;
+					curr_draw <= choice_u;
+					if(x_u > 8'b10100000 || x_u == 8'b10100000) begin
+						x_u <= 8'b01010000;
+						if (y_u > 7'b1111000 || y_u == 7'b1111000)
+							En_u <= 1'b0;
+						else
+							y_u <= y_u + 1'b1;
+					end
+					else
+						x_u <= x_u + 1'b1;
+					if (x_u  < 8'b10100000 && y_u < 7'b1111000)
+						En_u <= 1'b1;
+					else
+						En_u <= 1'b0;
+				end
 				else
 					y_c <= y_c + 1'b1;
+				
 			end
 			else
 				x_c <= x_c + 1'b1;
 			if (x_c  < 8'b01010000 && y_c < 7'b1111000)
-				writeEn_c <= 1'b1;
+				En_c <= 1'b1;
 			else
-				writeEn_c <= 1'b0;
+				En_c <= 1'b0;
+			
+			
+
+				
+
 		end	
 		
 			 
 			
 	end
 	always @(*) begin
-		if (choice == 2'b00) // choice is rock
+		if (curr_draw == 2'b00) // choice is rock
 				q = q_r;
-		else if (choice == 2'b01) // choice is scissor
+		else if (curr_draw == 2'b01) // choice is scissor
 				q = q_s;
 		else //choice is paper
 				q = q_p;
@@ -441,7 +453,7 @@ module screen_display
 		else begin
 			case (q)
 				1'b1: begin
-					if (player == 0) //user's choice, background is black
+					if (En_u == 1) //user's choice, background is black
 						colour <= 3'b000;
 					else
 						colour <= 3'b111; //computer's choice, background is white
