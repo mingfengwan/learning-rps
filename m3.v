@@ -60,7 +60,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 	wire ready;
 	
 	markov mar(.clock(CLOCK_50), .reset(reset), .start(start), .user(user), .choice(com_m));
-	reinforce(.clock(CLOCK_50), .reset(reset), .start(start), user_choice(user), choice(com_re), ready(ready));
+	reinforce re(.clock(CLOCK_50), .reset(reset), .start(start), .user_choice(user), .choice(com_re), .ready(ready));
 	random computer(
 	.clock(CLOCK_50),
 	.choice(com_ra)
@@ -752,7 +752,7 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 	float_adder f0(.clock(clock), .add_sub(1'b1), .dataa(pre_reward), 
 	.datab(current_reward), .result(new_reward));
 	
-	always @(posedge clock, negedge reset) begin
+	always @(posedge clock, negedge reset, negedge start) begin
 		if (!reset) begin
 			if (random_choice == 2'b1) begin
 				matrix[0][0] <= random21;
@@ -775,6 +775,20 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 				matrix[2][0] <= random45;
 				matrix[2][1] <= random21;
 				matrix[2][2] <= random34;
+			end
+		end
+		
+		else if (!start) begin
+			if (game < 60) begin
+				t_tracker <= 6'b0;
+				count_comp <= 7'b0;
+				ready <= 1'b0;
+			end
+			if (game > 0) begin
+				pre_reward <= reward[game - 6'b1];
+			end
+			else begin
+				pre_reward <= 32'b0;
 			end
 		end
 		
@@ -813,20 +827,6 @@ module reinforce(clock, reset, start, user_choice, choice, ready);
 		
 		else if (count_comp < 100) begin
 			count_comp <= count_comp + 7'b1;
-		end
-	end
-	
-	always @(negedge start) begin
-		if (game < 60) begin
-			t_tracker <= 6'b0;
-			count_comp <= 7'b0;
-			ready <= 1'b0;
-		end
-		if (game > 0) begin
-			pre_reward <= reward[game - 6'b1];
-		end
-		else begin
-			pre_reward <= 32'b0;
 		end
 	end
 	
