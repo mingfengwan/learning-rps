@@ -172,7 +172,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 			endcase
 			
 			end
-			end
+			
 
 		   else if (user == 2'b10) begin //user is paper
 		   //choice_u <= 2;
@@ -200,6 +200,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 			end
 
 
+		end
 		end
 		else begin
 		    equ <= 0;
