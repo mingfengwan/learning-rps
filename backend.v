@@ -42,7 +42,7 @@ module markov(clock, reset, start, user, choice);
 			if (!(^previous === 1'bX)) begin
 				temp <= matrix[previous][user] + 8'b1;
 			end
-			$display("%p", matrix);
+			//$display("%p", matrix);
 		end
 		else begin
 			previous <= comb;
@@ -60,7 +60,7 @@ module markov(clock, reset, start, user, choice);
 			matrix[count][2] <= 8'b0;
 		end
 		
-		else if (!(^previous === 1'bX)) begin
+		else if (!(^previous === 1'bX) && (matrix[previous][user] < temp)) begin
 			matrix[previous][user] <= temp;
 		end
 	end
