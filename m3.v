@@ -308,7 +308,7 @@ module screen_display
 	//input   [3:0]   KEY;
 	input reset_n;
 	//input [2:0] colour
-	input player;
+	//input player;
 	//assign player = SW[9]; // 0 for user,1 for computer
 	input [3:0] choice; // 00 is rock, 01 is scissor, 10 is paper; 3-2 is computer,1-0 is user 
 	//assign choice = SW[1:0];
@@ -339,7 +339,7 @@ module screen_display
 	
 	reg [7:0] x_c;
 	reg [6:0] y_c;
-	//reg En_c;
+	reg En_c;
 	reg [7:0] x_u;
 	reg [6:0] y_u;
 	reg En_u;
@@ -388,10 +388,10 @@ module screen_display
 						En_u <= 1'b1;
 					else
 						En_u <= 1'b0;
-				
+				end
 				else
 					y_c <= y_c + 1'b1;
-				end
+				
 			end
 			else
 				x_c <= x_c + 1'b1;
@@ -453,7 +453,7 @@ module screen_display
 		else begin
 			case (q)
 				1'b1: begin
-					if (player == 0) //user's choice, background is black
+					if (En_u == 1) //user's choice, background is black
 						colour <= 3'b000;
 					else
 						colour <= 3'b111; //computer's choice, background is white
