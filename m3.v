@@ -77,22 +77,6 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 	default: com = com_ra;
 	endcase
 	
-	 /*screen_display user_draw (
-		.CLOCK_50(CLOCK_50),						
-		.reset_n(start),
-		.player(0),
-		.choice(user),
-		.VGA_CLK(VGA_CLK),   						
-		.VGA_HS(VGA_HS),							
-		.VGA_VS(VGA_VS),							
-		.VGA_BLANK_N(VGA_BLANK_N),						
-		.VGA_SYNC_N(VGA_SYNC_N),						
-		.VGA_R(VGA_R),   						
-		.VGA_G(VGA_G),	 						
-		.VGA_B(VGA_B)   						
-	);
-	*/
-	
 	screen_display sd(
 		.CLOCK_50(CLOCK_50),						
 		.reset_n(start),
@@ -284,7 +268,7 @@ endmodule
 
 
 
-module m3
+module screen_display
 	(
 		CLOCK_50,						//	On Board 50 MHz
 		reset_n,
@@ -404,7 +388,7 @@ module m3
 				En_c <= 1'b0;
 			
 	
-			if (En_u == 1'b'1) begin
+			if (En_u == 1'b1) begin
 				if(x_u > 8'b10100000 || x_u == 8'b10100000) begin
 						x_u <= 8'b01010000;
 						if (y_u > 7'b1111000 || y_u == 7'b1111000) begin
