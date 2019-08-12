@@ -126,6 +126,10 @@ module m3
 			end
 			else 
 				x_c <= x_c + 1'b1;
+			if (x_c  < 8'b01010000 && y_c < 7'b1111000)
+				En_c <= 1'b1;
+			else
+				En_c <= 1'b0;
 			
 	
 			if (En_u == 1'b'1) begin
@@ -139,9 +143,14 @@ module m3
 						else
 							y_u <= y_u + 1'b1;
 				end
+			
+				else
+					x_u <= x_u + 1'b1;
 			end
+			if ((x_c > 8'b01010000 || x_c == 8'b01010000)  && (y_u < 7'b1111000))
+				En_u <= 1'b1;
 			else
-				x_u <= x_u + 1'b1;
+				En_u <= 1'b0;
 		end	
 		
 			 
