@@ -19,7 +19,7 @@ add wave {/*}
 force {clock} 0, 1 {1 ns} -repeat 2ns
 force {start} 1
 force {reset} 0
-force {user_choice} 00
+force {user_choice} 01
 run 10ns
 
 force {reset} 1
@@ -70,10 +70,4 @@ force {start} 0
 run 10ns
 
 force {start} 1
-run 900ns
-
-force {start} 0
-run 10ns
-
-force {start} 1
-run 900ns
+run 1400ns

@@ -73,10 +73,17 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 	case(SW[9:8])
 	2'b00: com = com_ra;
 	2'b01: com = com_m;
-	2'b10: com = com_re;
+	2'b10: begin 
+		case(com_re)
+			2'b00: com = 01;
+			2'b01: com = 10;
+			2'b10: com = 00;
+		endcase
+	end
 	default: com = com_ra;
 	endcase
 	
+	/***
 	screen_display sd(
 		.CLOCK_50(CLOCK_50),						
 		.reset_n(start),
@@ -89,6 +96,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 		.VGA_R(VGA_R),   						
 		.VGA_G(VGA_G),	 						
 		.VGA_B(VGA_B)   						);
+	***/
 	
 
 	always @(negedge start, negedge reset)
