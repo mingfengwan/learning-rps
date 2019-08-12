@@ -93,7 +93,7 @@ module m3(SW, KEY,CLOCK_50, HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, LEDR,
 	);
 	*/
 	
-	screen_display computer_draw(
+	screen_display sd(
 		.CLOCK_50(CLOCK_50),						
 		.reset_n(start),
 		.choice({com_loaded, user}),
@@ -284,7 +284,7 @@ endmodule
 
 
 
-module screen_display
+module m3
 	(
 		CLOCK_50,						//	On Board 50 MHz
 		reset_n,
@@ -302,18 +302,24 @@ module screen_display
 		VGA_SYNC_N,						//	VGA SYNC
 		VGA_R,   						//	VGA Red[9:0]
 		VGA_G,	 						//	VGA Green[9:0]
-		VGA_B   						//	VGA Blue[9:0]
+		VGA_B,   						//	VGA Blue[9:0]
+		//HEX0, HEX1, LEDR
 	);
 
 	input			CLOCK_50;				//	50 MHz
 	//input   [9:0]   SW;
 	//input   [3:0]   KEY;
-	input reset_n;
+	//input reset_n;
+   input reset_n;
+	//assign reset_n = KEY[0];
 	//input [2:0] colour
 	//input player;
 	//assign player = SW[9]; // 0 for user,1 for computer
-	input [3:0] choice; // 00 is rock, 01 is scissor, 10 is paper; 3-2 is computer,1-0 is user 
-	//assign choice = SW[1:0];
+	
+	
+	input [3:0] choice; // 00 is rock, 01 is scissor, 10 is paper; 3-2 is computer,1-0 is use
+	//wire [3:0] choice; 
+	//assign choice = SW[3:0];
 	wire [1:0] choice_c, choice_u;
 	assign choice_c = choice[3:2];
 	assign choice_u = choice[1:0];
@@ -329,10 +335,11 @@ module screen_display
 	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
 	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
 	
+	//output [6:0] HEX0, HEX1;
+	//output [9:0] LEDR;
 	
 
-	//wire reset_n;
-	//assign reset_n = KEY[0];
+
    wire	q_s, q_r, q_p;
 	reg q;
 	
@@ -348,10 +355,11 @@ module screen_display
 	wire [7:0] x;
 	wire [6:0] y;
 	wire writeEn;
-	assign writeEn = En_c || En_u; 
-	//assign x = player ? x_c : x_u;
-	//assign y = player ? y_c : y_u;
-	//assign writeEn = player ? writeEn_c : writeEn_u;
+	//assign writeEn = (En_c || En_u); 
+	assign x = En_c ? x_c : x_u;
+	assign y = En_c ? y_c : y_u;
+	assign writeEn = (En_c | En_u);
+	
 	reg [1:0] curr_draw;
 
 	
@@ -367,6 +375,8 @@ module screen_display
 			En_c <= 1'b1;
 			En_u <= 1'b0;
 			curr_draw <= choice_c;
+			//x <= x_c;
+			//y <= y_c;
 			end
 
 		else
@@ -374,38 +384,45 @@ module screen_display
 			if(x_c > 8'b01010000 || x_c == 8'b01010000) begin
 				x_c <= 8'b0;
 				if (y_c > 7'b1111000 || y_c == 7'b1111000) begin
+					x_c <= 8'b01010000;
+					y_c <= 7'b1111000;
 					En_c <= 1'b0;
 					En_u <= 1'b1;
 					curr_draw <= choice_u;
-					if(x_u > 8'b10100000 || x_u == 8'b10100000) begin
-						x_u <= 8'b01010000;
-						if (y_u > 7'b1111000 || y_u == 7'b1111000)
-							En_u <= 1'b0;
-						else
-							y_u <= y_u + 1'b1;
-					end
-					else
-						x_u <= x_u + 1'b1;
-					if (x_u  < 8'b10100000 && y_u < 7'b1111000)
-						En_u <= 1'b1;
-					else
-						En_u <= 1'b0;
+					//x <= x_u;
+					//y <= y_u;
 				end
+				
 				else
 					y_c <= y_c + 1'b1;
-				
 			end
-			else
+			else 
 				x_c <= x_c + 1'b1;
 			if (x_c  < 8'b01010000 && y_c < 7'b1111000)
 				En_c <= 1'b1;
 			else
 				En_c <= 1'b0;
 			
+	
+			if (En_u == 1'b'1) begin
+				if(x_u > 8'b10100000 || x_u == 8'b10100000) begin
+						x_u <= 8'b01010000;
+						if (y_u > 7'b1111000 || y_u == 7'b1111000) begin
+							x_u <= 8'b10100000;
+							y_c <= 7'b1111000;
+							En_u <= 1'b0;
+						end
+						else
+							y_u <= y_u + 1'b1;
+				end
 			
-
-				
-
+				else
+					x_u <= x_u + 1'b1;
+			end
+			if ((x_c > 8'b01010000 || x_c == 8'b01010000)  && (y_u < 7'b1111000))
+				En_u <= 1'b1;
+			else
+				En_u <= 1'b0;
 		end	
 		
 			 
@@ -455,7 +472,7 @@ module screen_display
 		else begin
 			case (q)
 				1'b1: begin
-					if (En_u == 1) //user's choice, background is black
+					if (En_u == 1'b1) //user's choice, background is black
 						colour <= 3'b000;
 					else
 						colour <= 3'b111; //computer's choice, background is white
