@@ -23,7 +23,7 @@ m3
 - VGA adapter
 - modules for single-precision floating point computation: float_adder, ALTFP_EXa, float_div, float_multi, float_compare
 
-# Other required file
+# Other required files
 - new_rock.mono.mif 
 - new_paper.mono.mif
 - new_scissor.mono.mif
