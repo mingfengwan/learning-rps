@@ -1,6 +1,7 @@
 # learning-rps
 Rock Paper Scissor with AI: 
-Instrution: Users indicate their choice on switches. Both Computer's and user's choices would be indicated on the monitor. Computer has 3 modes: random, markov, and reinforcement. In the last 2 modes, computer will try to win the user by learning the user's pattern of choice.
+
+Intuition: Users indicate their choice on switches. Both Computer's and user's choices would be indicated on the monitor. Computer has 3 modes: random, markov, and reinforcement. In the last 2 modes, computer will try to win the user by learning the user's pattern of choice.
 Device: FPGA board, monitor.
 
 # Top Level Module
