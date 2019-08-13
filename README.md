@@ -27,6 +27,3 @@ m3
 - new_rock.mono.mif 
 - new_paper.mono.mif
 - new_scissor.mono.mif
-- rock.bmp
-- scissor.bmp
-- paper.bmp
